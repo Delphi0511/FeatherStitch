@@ -1,0 +1,151 @@
+.page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0d1b4b 0%, #1a3a8f 50%, #1e56c0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.card {
+  width: 100%;
+  max-width: 900px;
+  background-color: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.4);
+  overflow: hidden;
+}
+
+.header {
+  background: linear-gradient(90deg, #1d4ed8, #3b82f6);
+  padding: 22px 40px;
+  position: relative;
+  overflow: hidden;
+}
+
+.headerCircle1 {
+  position: absolute;
+  top: -24px;
+  right: -24px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background-color: rgba(255,255,255,0.1);
+}
+
+.headerCircle2 {
+  position: absolute;
+  bottom: -32px;
+  left: -16px;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background-color: rgba(255,255,255,0.1);
+}
+
+.headerTitle {
+  font-size: 26px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 4px 0;
+  position: relative;
+  z-index: 1;
+}
+
+.headerSubtitle {
+  font-size: 13px;
+  color: #bfdbfe;
+  margin: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.body {
+  padding: 30px 40px;
+}
+
+.row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #2563eb;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 7px;
+  padding: 9px 12px;
+  font-size: 13px;
+  color: #1e3a8a;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+.photoBox {
+  width: 130px;
+  height: 120px;
+  border-radius: 10px;
+  border: 2px solid #bfdbfe;
+  background-color: #eff6ff;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.photoImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.saveBtn {
+  padding: 13px 60px;
+  background-color: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  display: block;
+  margin: 24px auto 0;
+}
+
+.successMsg {
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  background-color: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #15803d;
+}
