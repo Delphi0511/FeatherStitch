@@ -36,6 +36,11 @@ const Login: React.FC = () => {
       });
 
       const data = await response.json();
+      localStorage.setItem(
+  "token",
+  data.token
+);alert(data.token);
+alert("Token saved");
 
       if (!response.ok) {
         throw new Error(data.message || "Login failed");

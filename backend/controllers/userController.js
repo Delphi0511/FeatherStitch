@@ -1,4 +1,7 @@
 import User from "../models/User.js";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+
 
 export const signup = async (req, res) => {
   try {
@@ -12,11 +15,16 @@ export const signup = async (req, res) => {
       });
     }
 
-    const newUser = new User({
-      email,
-      password,
-      usertype,
-    });
+    const hashedPassword = await bcrypt.hash(
+  password,
+  10
+);
+
+const newUser = new User({
+  email,
+  password: hashedPassword,
+  usertype,
+});
 
     await newUser.save();
 
@@ -45,16 +53,34 @@ export const login = async (req, res) => {
       });
     }
 
-    if (user.password !== password) {
-      return res.status(400).json({
-        message: "Invalid password",
-      });
-    }
+    const isMatch = await bcrypt.compare(
+  password,
+  user.password
+);
 
-    return res.status(200).json({
-      message: "Login successful",
-      usertype: user.usertype,
-    });
+if (!isMatch) {
+  return res.status(400).json({
+    message: "Invalid password",
+  });
+}
+ //creating jwt token for user
+    const token = jwt.sign(
+  {
+    userId: user._id,
+    email: user.email,
+    usertype: user.usertype,
+  },
+  process.env.JWT_SECRET,
+  {
+    expiresIn: "7d",
+  }
+);
+
+return res.status(200).json({
+  message: "Login successful",
+  token,
+  usertype: user.usertype,
+});
 
   } catch (err) {
     console.log("Login Error:", err);
