@@ -80,6 +80,8 @@ return res.status(200).json({
   message: "Login successful",
   token,
   usertype: user.usertype,
+  userId: user._id,
+  email: user.email
 });
 
   } catch (err) {

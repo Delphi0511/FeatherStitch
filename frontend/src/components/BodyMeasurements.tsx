@@ -1,5 +1,5 @@
 import { useState } from "react";
-
+import axios from "axios";
 // ── Types ──────────────────────────────────────────────────────────────────
 type Gender = "male" | "female";
 type MaleTabId = "upper" | "lower";
@@ -218,6 +218,32 @@ export default function BodyMeasurements() {
     }));
 
   const handleSave = async () => {
+ const userData = localStorage.getItem("user");
+
+if (!userData) {
+  alert("User not found. Please login again.");
+  return;
+}
+
+const user = JSON.parse(userData);
+
+const payload = {
+  userId: user.userId,
+  gender,
+  type: gender === "male" ? maleTab : femaleTab,
+  data:
+    gender === "male"
+      ? maleData[maleTab]
+      : femaleData[femaleTab],
+};
+//send the payload to the backend using axios
+const response = await axios.post(
+  "http://localhost:5000/api/measurements/save",
+  payload
+);
+
+console.log(response.data);
+
     setIsSaving(true);
     showToast("Saving measurements…", "loading");
     const snapshot = gender === "male"
