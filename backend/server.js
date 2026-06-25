@@ -6,7 +6,7 @@ import dotenv from "dotenv";
 import userRouter from "./routes/userRouter.js";
 import customerRoutes from "./routes/customer.js";
 import measurementRoutes from "./routes/measurements.js";
-
+import tailorRoutes from "./routes/tailor.js";
 
 dotenv.config();
 
@@ -27,7 +27,7 @@ app.get("/", (req, res) => {
 app.use("/user", userRouter);
 app.use("/api/customer", customerRoutes);
 app.use("/api/measurements", measurementRoutes);
-
+app.use("/api/tailor", tailorRoutes);
 
 mongoose.connect("mongodb://localhost:27017/Tailordb")
   .then(() => console.log("MongoDB Connected"))
