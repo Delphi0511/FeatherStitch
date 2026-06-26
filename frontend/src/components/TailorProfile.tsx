@@ -1,5 +1,7 @@
 import { useState, useRef } from "react";
 
+const API_BASE = "http://localhost:5000/api/tailor";
+
 const CITIES: string[] = [
   "Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai",
   "Kolkata", "Pune", "Ahmedabad", "Jaipur", "Surat", "Lucknow", "Kanpur",
@@ -13,20 +15,29 @@ interface FormState {
   email: string; phone: string; address: string; city: string; state: string; shopAddress: string; shopCity: string;
 }
 
+const emptyForm: FormState = {
+  name: "", dob: "", gender: "", aadharNo: "",
+  category: "", speciality: "", workType: "", website: "", since: "", otherInfo: "",
+  email: "", phone: "", address: "", city: "", state: "", shopAddress: "", shopCity: "",
+};
+
 const ProfileTailor = () => {
   const [activeTab, setActiveTab] = useState<Tab>("personal");
-  const [form, setForm] = useState<FormState>({
-    name: "", dob: "", gender: "", aadharNo: "",
-    category: "", speciality: "", workType: "", website: "", since: "", otherInfo: "",
-    email: "", phone: "", address: "", city: "", state: "", shopAddress: "", shopCity: "",
-  });
+  const [form, setForm] = useState<FormState>(emptyForm);
 
   const [profilePic, setProfilePic] = useState<string | null>(null);
+  const [profilePicFile, setProfilePicFile] = useState<File | null>(null);
   const [aadharPreview, setAadharPreview] = useState<string | null>(null);
   const [aadharName, setAadharName] = useState<string>("");
   const [saved, setSaved] = useState<boolean>(false);
   const [citySuggestions, setCitySuggestions] = useState<string[]>([]);
   const [shopCitySuggestions, setShopCitySuggestions] = useState<string[]>([]);
+
+  // --- new state for backend wiring ---
+  const [searchEmail, setSearchEmail] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
+  const [saving, setSaving] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
 
   const profileRef = useRef<HTMLInputElement>(null);
   const aadharRef = useRef<HTMLInputElement>(null);
@@ -43,7 +54,11 @@ const ProfileTailor = () => {
 
   const handleProfilePic = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) { if (profilePic) URL.revokeObjectURL(profilePic); setProfilePic(URL.createObjectURL(file)); }
+    if (file) {
+      if (profilePic) URL.revokeObjectURL(profilePic);
+      setProfilePic(URL.createObjectURL(file));
+      setProfilePicFile(file);
+    }
   };
 
   const handleAadhar = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -51,6 +66,89 @@ const ProfileTailor = () => {
     if (file) {
       setAadharName(file.name);
       if (file.type.startsWith("image/")) setAadharPreview(URL.createObjectURL(file));
+    }
+  };
+
+  // --- GET /api/tailor/getTailor/:email ---
+  const handleFindRecord = async () => {
+    if (!searchEmail) {
+      setError("Enter an email to search");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`${API_BASE}/getTailor/${encodeURIComponent(searchEmail)}`);
+      if (res.status === 404) {
+        setError("No profile found for this email");
+        setLoading(false);
+        return;
+      }
+      if (!res.ok) throw new Error("Failed to fetch profile");
+      const data = await res.json();
+
+      setForm({
+        name: data.name || "", dob: data.dob || "", gender: data.gender || "", aadharNo: data.aadharNo || "",
+        category: data.category || "", speciality: data.speciality || "", workType: data.workType || "",
+        website: data.website || "", since: data.since || "", otherInfo: data.otherInfo || "",
+        email: data.email || "", phone: data.phone || "", address: data.address || "",
+        city: data.city || "", state: data.state || "", shopAddress: data.shopAddress || "", shopCity: data.shopCity || "",
+      });
+
+      if (data.profilePic) {
+        // Backend stores a file path (e.g. from multer). Adjust this base
+        // if your server serves uploads from a different static route.
+        setProfilePic(`http://localhost:5000/${data.profilePic.replace(/\\/g, "/")}`);
+      }
+
+      setSaved(false);
+    } catch (err: any) {
+      setError(err.message || "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- POST /api/tailor/saveTailor + optional POST /api/tailor/upload-profile ---
+  const handleSave = async () => {
+    if (!form.email) {
+      setError("Email is required to save a profile");
+      setActiveTab("contact");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch(`${API_BASE}/saveTailor`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || "Failed to save profile");
+      }
+
+      // If a new profile pic was picked, upload it as a separate multipart request
+      if (profilePicFile) {
+        const fd = new FormData();
+        fd.append("image", profilePicFile);
+        fd.append("userId", form.email); // controller reads req.body.userId as the email
+        const picRes = await fetch(`${API_BASE}/upload-profile`, {
+          method: "POST",
+          body: fd,
+        });
+        if (!picRes.ok) {
+          const errData = await picRes.json().catch(() => ({}));
+          throw new Error(errData.error || "Profile saved, but photo upload failed");
+        }
+      }
+
+      setSaved(true);
+    } catch (err: any) {
+      setError(err.message || "Something went wrong");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -71,7 +169,6 @@ const ProfileTailor = () => {
 
         {/* Header */}
         <div className="relative px-10 py-7 overflow-hidden" style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)" }}>
-          {/* Glowing accent */}
           <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-cyan-500 via-sky-400 to-transparent" />
           <div className="absolute -top-10 -right-10 w-40 h-40 bg-cyan-500/10 rounded-full blur-2xl" />
           <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-sky-500/10 rounded-full blur-2xl" />
@@ -90,13 +187,27 @@ const ProfileTailor = () => {
         <div className="bg-slate-800/50 border-b border-slate-700 px-10 py-4 flex gap-3 items-center">
           <input
             type="email"
+            value={searchEmail}
+            onChange={(e) => setSearchEmail(e.target.value)}
             placeholder="Search by email to load existing profile..."
             className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all duration-200"
           />
-          <button className="px-6 py-2.5 bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-500 hover:to-sky-500 text-white text-sm font-semibold rounded-lg transition-all duration-200 whitespace-nowrap shadow-md shadow-cyan-900/30">
-            Find Record
+          <button
+            onClick={handleFindRecord}
+            disabled={loading}
+            className="px-6 py-2.5 bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-500 hover:to-sky-500 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-all duration-200 whitespace-nowrap shadow-md shadow-cyan-900/30"
+          >
+            {loading ? "Searching..." : "Find Record"}
           </button>
         </div>
+
+        {error && (
+          <div className="px-10 pt-4">
+            <div className="px-4 py-2.5 bg-red-900/30 border border-red-600/40 text-red-400 text-sm font-medium rounded-lg">
+              {error}
+            </div>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex border-b border-slate-700 bg-slate-900 px-10">
@@ -193,6 +304,9 @@ const ProfileTailor = () => {
                 {aadharName && !aadharPreview && (
                   <p className="text-xs text-slate-400 mb-3">📎 {aadharName}</p>
                 )}
+                <p className="text-[11px] text-amber-400/80 mb-3">
+                  Note: there's no backend endpoint for Aadhar uploads yet — this preview is local only.
+                </p>
                 <div>
                   <label className={labelClass}>Aadhar Number</label>
                   <input name="aadharNo" value={form.aadharNo} onChange={handleChange}
@@ -371,10 +485,11 @@ const ProfileTailor = () => {
               </button>
             ) : (
               <button
-                onClick={() => setSaved(true)}
-                className="px-10 py-2.5 bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-500 hover:to-sky-500 text-white text-sm font-bold rounded-xl transition-all duration-200 shadow-md shadow-cyan-900/40"
+                onClick={handleSave}
+                disabled={saving}
+                className="px-10 py-2.5 bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-500 hover:to-sky-500 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-all duration-200 shadow-md shadow-cyan-900/40"
               >
-                Save Profile
+                {saving ? "Saving..." : "Save Profile"}
               </button>
             )}
           </div>
