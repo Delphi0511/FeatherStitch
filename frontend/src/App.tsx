@@ -9,7 +9,7 @@ import CustomerProfile from './components/CustomerProfile';
 import TailorProfile from './components/TailorProfile';
 import BodyMeasurements from './components/BodyMeasurements';
 import ProtectedRoute from "./components/ProtectedRoute";
-
+import AddEditPost from './components/AddEditPost';
 
 function App() {
   return (
@@ -37,6 +37,21 @@ function App() {
         </ProtectedRoute>
       }
     />
+    <Route
+  path="/posts"
+  element={
+    <ProtectedRoute allowedRole="Tailor">
+      <AddEditPost
+        onSave={(data, status) => {
+          console.log(data, status);
+        }}
+        onCancel={() => {
+          console.log("Cancelled");
+        }}
+      />
+    </ProtectedRoute>
+  }
+/>
 
     {/* Customer Routes */}
     <Route
