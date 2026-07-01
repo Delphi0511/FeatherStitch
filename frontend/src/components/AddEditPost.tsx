@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { createPost, updatePost, deletePost } from "../api/posts.tsx";
 
 // ---- Types -----------------------------------------------------------
 
@@ -14,16 +15,18 @@ export interface PostData {
   category: string;
   turnaround: string;
   description: string;
-  price: Number;
-  tags: Array<string>;
+  price: number;
+  tags: string;
   images: PostImage[];
 }
 
 interface AddEditPostCardProps {
   /** Pass an existing post to render edit mode; omit for add mode */
   post?: PostData;
-  onSave: (data: Omit<PostData, "id"> & { id?: string }, status: "draft" | "published") => void;
-  onDelete?: (id: string) => void;
+  /** Called after a successful create/update, with the saved post from the server */
+  onSaved?: (savedPost: any) => void;
+  /** Called after a successful delete */
+  onDeleted?: (id: string) => void;
   onCancel?: () => void;
 }
 
@@ -33,17 +36,21 @@ const MAX_IMAGES = 6;
 
 // ---- Component ---------------------------------------------------------
 
-export default function AddEditPostCard({ post, onSave, onDelete, onCancel }: AddEditPostCardProps) {
+export default function AddEditPostCard({ post, onSaved, onDeleted, onCancel }: AddEditPostCardProps) {
   const isEditMode = Boolean(post);
 
   const [title, setTitle] = useState(post?.title ?? "");
   const [category, setCategory] = useState(post?.category ?? CATEGORIES[0]);
   const [turnaround, setTurnaround] = useState(post?.turnaround ?? TURNAROUNDS[0]);
   const [description, setDescription] = useState(post?.description ?? "");
-  const [price, setPrice] = useState(post?.price ?? "");
+  const [price, setPrice] = useState<string>(post?.price != null ? String(post.price) : "");
   const [tags, setTags] = useState(post?.tags ?? "");
   const [images, setImages] = useState<PostImage[]>(post?.images ?? []);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -64,28 +71,51 @@ export default function AddEditPostCard({ post, onSave, onDelete, onCancel }: Ad
     setImages((prev) => prev.filter((img) => img.id !== id));
   };
 
-  const handleSave = (status: "draft" | "published") => {
-    onSave(
-      {
-        id: post?.id,
-        title,
-        category,
-        turnaround,
-        description,
-        price,
-        tags,
-        images,
-      },
-      status
-    );
+  const handleSave = async (status: "draft" | "published") => {
+    setError(null);
+    setSaving(true);
+
+    const payload = {
+      title,
+      category,
+      turnaround,
+      description,
+      price,
+      tags,
+      images,
+    };
+
+    try {
+      const savedPost = isEditMode
+        ? await updatePost(post!.id, payload, status)
+        : await createPost(payload, status);
+
+      onSaved?.(savedPost);
+    } catch (err: any) {
+      setError(err.message || "Something went wrong while saving.");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDeleteClick = () => {
+  const handleDeleteClick = async () => {
     if (!confirmingDelete) {
       setConfirmingDelete(true);
       return;
     }
-    if (post) onDelete?.(post.id);
+    if (!post) return;
+
+    setError(null);
+    setDeleting(true);
+    try {
+      await deletePost(post.id);
+      onDeleted?.(post.id);
+    } catch (err: any) {
+      setError(err.message || "Something went wrong while deleting.");
+    } finally {
+      setDeleting(false);
+      setConfirmingDelete(false);
+    }
   };
 
   return (
@@ -109,159 +139,161 @@ export default function AddEditPostCard({ post, onSave, onDelete, onCancel }: Ad
       {/* Scrollable content */}
       <div style={styles.content}>
         <div style={styles.inner}>
-      {/* Photos */}
-      <div style={styles.section}>
-        <label style={styles.label}>Photos</label>
+          {error && <div style={styles.errorBanner}>{error}</div>}
 
-        {images.length === 0 ? (
-          <div
-            style={styles.dropzone}
-            onClick={() => fileInputRef.current?.click()}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              handleFiles(e.dataTransfer.files);
-            }}
-          >
-            <UploadIcon />
-            <p style={styles.dropzoneTitle}>Drag photos here or browse</p>
-            <p style={styles.dropzoneHint}>Up to {MAX_IMAGES} images, JPG or PNG</p>
-          </div>
-        ) : (
-          <div style={styles.thumbGrid}>
-            {images.map((img) => (
-              <div key={img.id} style={styles.thumb}>
-                <img src={img.url} alt="" style={styles.thumbImg} />
-                <button
-                  type="button"
-                  aria-label="Remove photo"
-                  style={styles.thumbRemove}
-                  onClick={() => removeImage(img.id)}
-                >
-                  <CloseIcon size={12} />
-                </button>
-              </div>
-            ))}
-            {images.length < MAX_IMAGES && (
-              <button
-                type="button"
-                aria-label="Add photo"
-                style={styles.thumbAdd}
+          {/* Photos */}
+          <div style={styles.section}>
+            <label style={styles.label}>Photos</label>
+
+            {images.length === 0 ? (
+              <div
+                style={styles.dropzone}
                 onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  handleFiles(e.dataTransfer.files);
+                }}
               >
-                <PlusIcon />
-              </button>
+                <UploadIcon />
+                <p style={styles.dropzoneTitle}>Drag photos here or browse</p>
+                <p style={styles.dropzoneHint}>Up to {MAX_IMAGES} images, JPG or PNG</p>
+              </div>
+            ) : (
+              <div style={styles.thumbGrid}>
+                {images.map((img) => (
+                  <div key={img.id} style={styles.thumb}>
+                    <img src={img.url} alt="" style={styles.thumbImg} />
+                    <button
+                      type="button"
+                      aria-label="Remove photo"
+                      style={styles.thumbRemove}
+                      onClick={() => removeImage(img.id)}
+                    >
+                      <CloseIcon size={12} />
+                    </button>
+                  </div>
+                ))}
+                {images.length < MAX_IMAGES && (
+                  <button
+                    type="button"
+                    aria-label="Add photo"
+                    style={styles.thumbAdd}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <PlusIcon />
+                  </button>
+                )}
+              </div>
             )}
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg"
+              multiple
+              style={{ display: "none" }}
+              onChange={(e) => handleFiles(e.target.files)}
+            />
           </div>
-        )}
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/png,image/jpeg"
-          multiple
-          style={{ display: "none" }}
-          onChange={(e) => handleFiles(e.target.files)}
-        />
-      </div>
+          {/* Title */}
+          <div style={styles.section}>
+            <label style={styles.label} htmlFor="post-title">
+              Title
+            </label>
+            <input
+              id="post-title"
+              type="text"
+              style={styles.input}
+              placeholder="Royal blue wedding sherwani"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </div>
 
-      {/* Title */}
-      <div style={styles.section}>
-        <label style={styles.label} htmlFor="post-title">
-          Title
-        </label>
-        <input
-          id="post-title"
-          type="text"
-          style={styles.input}
-          placeholder="Royal blue wedding sherwani"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-      </div>
+          {/* Category / Turnaround */}
+          <div style={styles.row}>
+            <div style={styles.field}>
+              <label style={styles.label} htmlFor="post-category">
+                Category
+              </label>
+              <select
+                id="post-category"
+                style={styles.select}
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={styles.field}>
+              <label style={styles.label} htmlFor="post-turnaround">
+                Turnaround time
+              </label>
+              <select
+                id="post-turnaround"
+                style={styles.select}
+                value={turnaround}
+                onChange={(e) => setTurnaround(e.target.value)}
+              >
+                {TURNAROUNDS.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-      {/* Category / Turnaround */}
-      <div style={styles.row}>
-        <div style={styles.field}>
-          <label style={styles.label} htmlFor="post-category">
-            Category
-          </label>
-          <select
-            id="post-category"
-            style={styles.select}
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-          >
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div style={styles.field}>
-          <label style={styles.label} htmlFor="post-turnaround">
-            Turnaround time
-          </label>
-          <select
-            id="post-turnaround"
-            style={styles.select}
-            value={turnaround}
-            onChange={(e) => setTurnaround(e.target.value)}
-          >
-            {TURNAROUNDS.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+          {/* Description */}
+          <div style={styles.section}>
+            <label style={styles.label} htmlFor="post-description">
+              Description
+            </label>
+            <textarea
+              id="post-description"
+              rows={4}
+              style={styles.textarea}
+              placeholder="Describe the fabric, fit, and craftsmanship"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
 
-      {/* Description */}
-      <div style={styles.section}>
-        <label style={styles.label} htmlFor="post-description">
-          Description
-        </label>
-        <textarea
-          id="post-description"
-          rows={4}
-          style={styles.textarea}
-          placeholder="Describe the fabric, fit, and craftsmanship"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-      </div>
-
-      {/* Price / Tags */}
-      <div style={styles.row}>
-        <div style={styles.field}>
-          <label style={styles.label} htmlFor="post-price">
-            Starting price
-          </label>
-          <input
-            id="post-price"
-            type="text"
-            style={styles.input}
-            placeholder="₹4,500"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-          />
-        </div>
-        <div style={styles.field}>
-          <label style={styles.label} htmlFor="post-tags">
-            Tags
-          </label>
-          <input
-            id="post-tags"
-            type="text"
-            style={styles.input}
-            placeholder="wedding, festive, silk"
-            value={tags}
-            onChange={(e) => setTags(e.target.value)}
-          />
-        </div>
-      </div>
+          {/* Price / Tags */}
+          <div style={styles.row}>
+            <div style={styles.field}>
+              <label style={styles.label} htmlFor="post-price">
+                Starting price
+              </label>
+              <input
+                id="post-price"
+                type="text"
+                style={styles.input}
+                placeholder="₹4,500"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+              />
+            </div>
+            <div style={styles.field}>
+              <label style={styles.label} htmlFor="post-tags">
+                Tags
+              </label>
+              <input
+                id="post-tags"
+                type="text"
+                style={styles.input}
+                placeholder="wedding, festive, silk"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -274,20 +306,31 @@ export default function AddEditPostCard({ post, onSave, onDelete, onCancel }: Ad
               style={confirmingDelete ? styles.dangerButtonConfirm : styles.dangerButton}
               onClick={handleDeleteClick}
               onBlur={() => setConfirmingDelete(false)}
+              disabled={deleting}
             >
               <TrashIcon />
-              {confirmingDelete ? "Confirm delete" : "Delete post"}
+              {deleting ? "Deleting..." : confirmingDelete ? "Confirm delete" : "Delete post"}
             </button>
           ) : (
             <span />
           )}
 
           <div style={styles.footerRight}>
-            <button type="button" style={styles.secondaryButton} onClick={() => handleSave("draft")}>
-              Save as draft
+            <button
+              type="button"
+              style={styles.secondaryButton}
+              onClick={() => handleSave("draft")}
+              disabled={saving}
+            >
+              {saving ? "Saving..." : "Save as draft"}
             </button>
-            <button type="button" style={styles.primaryButton} onClick={() => handleSave("published")}>
-              {isEditMode ? "Update post" : "Publish post"}
+            <button
+              type="button"
+              style={styles.primaryButton}
+              onClick={() => handleSave("published")}
+              disabled={saving}
+            >
+              {saving ? "Saving..." : isEditMode ? "Update post" : "Publish post"}
             </button>
           </div>
         </div>
@@ -388,7 +431,6 @@ const styles: Record<string, React.CSSProperties> = {
     margin: "0 auto",
     width: "100%",
   },
-  header: {},
   headerLeft: { display: "flex", alignItems: "center", gap: 12 },
   headerIconWrap: {
     width: 32,
@@ -409,6 +451,15 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
     padding: 4,
     display: "flex",
+  },
+  errorBanner: {
+    background: "rgba(239,68,68,0.1)",
+    border: "1px solid rgba(239,68,68,0.35)",
+    color: "#fca5a5",
+    borderRadius: 8,
+    padding: "10px 12px",
+    fontSize: 13,
+    marginBottom: "1rem",
   },
   section: { marginBottom: "1.1rem" },
   label: {
