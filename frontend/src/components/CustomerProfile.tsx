@@ -10,9 +10,25 @@ interface FormState {
   gender: string;
 }
 
+// Adds the current JWT to profile requests so the API can enforce account ownership.
+const authHeaders = (json = false): HeadersInit => ({
+  Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+  ...(json ? { "Content-Type": "application/json" } : {}),
+});
+
+// Reads the login identity once so the profile cannot be attached to a manually entered email.
+const getCurrentEmail = (): string => {
+  try {
+    return JSON.parse(localStorage.getItem("user") || "{}").email || "";
+  } catch {
+    return "";
+  }
+};
+
+// Presents the authenticated customer's profile, image upload, and save/update actions.
 const CustomerProfile = () => {
   const [form, setForm] = useState<FormState>({
-    email: "", name: "", address: "", city: "", state: "", gender: "",
+    email: getCurrentEmail(), name: "", address: "", city: "", state: "", gender: "",
   });
   const [profilePic, setProfilePic] = useState<string | null>(null);
   const [saved, setSaved] = useState<boolean>(false);
@@ -20,6 +36,7 @@ const CustomerProfile = () => {
   const [file, setFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Keeps editable form fields synchronized with the user's input and clears stale success states.
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>): void => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setSaved(false);
@@ -27,11 +44,13 @@ const CustomerProfile = () => {
   };
 
   // Opens the hidden file input
+  // Opens the hidden native file input from the styled Browse button.
   const handleBrowseClick = (): void => {
     fileRef.current?.click();
   };
 
   // Previews the selected file locally — does NOT upload yet
+  // Stores a selected photo and creates a temporary local preview before upload.
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
@@ -41,23 +60,23 @@ const CustomerProfile = () => {
   };
 
   // Uploads pic to server — called inside saveCustomer
+  // Uploads the selected image after the profile exists, allowing the API to associate it safely.
   const uploadProfilePic = async (): Promise<void> => {
-    if (!file || !form.email) return;
+    if (!file) return;
     const formData = new FormData();
     formData.append("image", file);
-    formData.append("userId", form.email);
     await fetch("http://localhost:5000/api/customer/upload-profile", {
       method: "POST",
+      headers: authHeaders(),
       body: formData,
     });
   };
+  // Sends edits for the signed-in customer's existing profile.
   const handleUpdate = async () => {
   try {
     const res = await fetch(`http://localhost:5000/api/customer/${form.email}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: authHeaders(true),
       body: JSON.stringify(form),
     });
 
@@ -70,9 +89,12 @@ const CustomerProfile = () => {
   }
 };
 
+  // Loads the current customer's saved profile using their locked login email.
   const searchCustomer = async (): Promise<void> => {
     try {
-      const response = await fetch(`http://localhost:5000/api/customer/getCustomer/${form.email}`);
+      const response = await fetch(`http://localhost:5000/api/customer/getCustomer/${form.email}`, {
+        headers: authHeaders(),
+      });
       const data = await response.json();
       if (data) {
         setForm({
@@ -90,11 +112,12 @@ const CustomerProfile = () => {
   };
 
   // Saves form data AND uploads pic (if one was selected) together
+  // Creates the profile if needed, then uploads a selected image after a successful save.
   const saveCustomer = async (): Promise<void> => {
     try {
       const response = await fetch("http://localhost:5000/api/customer/saveCustomer", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(true),
         body: JSON.stringify({
           emailId: form.email,
           name: form.name,
@@ -159,8 +182,8 @@ const CustomerProfile = () => {
                 <label className={labelClass}>Email ID</label>
                 <div className="flex gap-3">
                   <input
-                    name="email" value={form.email} onChange={handleChange}
-                    placeholder="customer@email.com" type="email"
+                    name="email" value={form.email} readOnly
+                    type="email"
                     className={inputClass}
                   />
                   <button

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Navigate } from "react-router-dom";
 
+// Collects a new account's credentials and role before directing the user to sign in.
 const Signup: React.FC = () => {
   const [formData, setFormData] = useState({
     email: "",
@@ -20,6 +21,7 @@ const Signup: React.FC = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Validates basic client-side requirements and requests account creation from the API.
   const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
     setMessage("");
@@ -52,8 +54,7 @@ const Signup: React.FC = () => {
   };
 
   // 🔥 humne yahan navigate kiya because hum chahte the ke urk bhi vhnage conditional rendering krte time url chnage ni ho paata sirf component chnage hota hai
-  if (redirect && formData.usertype === "Tailor") return <Navigate to="/tailordashboard" />;
-  if (redirect && formData.usertype === "Customer") return <Navigate to="/customerdashboard" />;
+  if (redirect) return <Navigate to="/login" replace />;
 
   // 🔥 NORMAL SIGNUP FORM RENDER
 

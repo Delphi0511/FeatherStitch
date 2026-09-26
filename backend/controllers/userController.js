@@ -3,9 +3,18 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 
+// Creates a credential record with a hashed password so new users can authenticate safely.
 export const signup = async (req, res) => {
   try {
-    const { email, password, usertype } = req.body;
+    const { email, password } = req.body;
+
+    // Normalize the role so "customer"/"tailor" can't be stored and later fail role checks.
+    const usertype = { customer: "Customer", tailor: "Tailor" }[String(req.body.usertype ?? "").toLowerCase()];
+    if (!email || !password || !usertype) {
+      return res.status(400).json({
+        message: "Email, password and a valid user type (Customer or Tailor) are required",
+      });
+    }
 
     const existingUser = await User.findOne({ email });
 
@@ -41,6 +50,7 @@ const newUser = new User({
   }
 };
 
+// Verifies credentials and returns a signed identity token used by protected application requests.
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;

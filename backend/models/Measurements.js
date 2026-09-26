@@ -60,6 +60,8 @@ const measurementSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+measurementSchema.index({ userId: 1, gender: 1, type: 1 }, { unique: true });
+
 const Measurement = mongoose.model("Measurement", measurementSchema);
 
 export default Measurement;

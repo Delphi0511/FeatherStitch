@@ -14,8 +14,8 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: "http://localhost:5173",
-  credentials: true
+  origin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
+  credentials: true,
 }));
 
 app.use(express.json());
@@ -31,7 +31,9 @@ app.use("/api/measurements", measurementRoutes);
 app.use("/api/tailor", tailorRoutes);
 app.use("/api/posts", postRoutes);
 
-mongoose.connect("mongodb://localhost:27017/Tailordb")
+const mongoUri = process.env.MONGODB_URI || "mongodb://localhost:27017/Tailordb";
+
+mongoose.connect(mongoUri)
   .then(() => console.log("MongoDB Connected"))
   .catch(err => console.log(err));
 

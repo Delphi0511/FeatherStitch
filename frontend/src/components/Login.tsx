@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+// Authenticates a user, stores the verified session data, and opens the role-specific dashboard.
 const Login: React.FC = () => {
   const navigate = useNavigate();
 
@@ -13,6 +14,7 @@ const Login: React.FC = () => {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  // Synchronizes login fields with their controlled inputs.
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -21,6 +23,7 @@ const Login: React.FC = () => {
     }));
   };
 
+  // Sends credentials to the API and persists the returned identity only on success.
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
@@ -36,31 +39,22 @@ const Login: React.FC = () => {
       });
 
       const data = await response.json();
-      localStorage.setItem("token", data.token);
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          userId: data.userId,
-          email: data.email,
-          usertype: data.usertype
-        })
-      );
-      alert(JSON.stringify(data, null, 2));
-
-
       if (!response.ok) {
         throw new Error(data.message || "Login failed");
       }
 
-      // Optional: save token if backend sends it
-      // localStorage.setItem("token", data.token);
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify({
+        userId: data.userId,
+        email: data.email,
+        usertype: data.usertype,
+      }));
 
       if (data.usertype == "Tailor") {
         navigate("/tailordashboard");
       } else if (data.usertype == "Customer") {
         navigate("/customerdashboard");
       } else {
-        alert(error);
         setError("Unknown user type");
       }
 

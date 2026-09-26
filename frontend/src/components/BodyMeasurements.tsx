@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 // ── Types ──────────────────────────────────────────────────────────────────
 type Gender = "male" | "female";
@@ -11,6 +11,12 @@ interface FieldValue {
 }
 
 type FieldMap = Record<string, FieldValue>;
+
+interface StoredMeasurement {
+  gender: Gender;
+  type: MaleTabId | FemaleTabId;
+  [key: string]: unknown;
+}
 
 interface MaleData {
   upper: FieldMap;
@@ -120,10 +126,17 @@ const TRAD_FIELDS: { key: string; units: string[] }[] = [
   { key: "DUPATTA LENGTH", units: ["m", "cm"] },
 ];
 
+// Maps form labels to normalized API fields so records can be loaded back into the UI.
+const STORED_FIELD_KEYS: Record<string, string> = {
+  "CHEST": "chest", "WAIST": "waist", "SHOULDER WIDTH": "shoulderWidth", "SHOULDER": "shoulderWidth", "SLEEVE LENGTH": "sleeveLength", "ARMHOLE": "armhole", "NECK": "neck", "SHIRT LENGTH": "shirtLength", "BICEP": "bicep", "WRIST": "wrist", "BUST": "bust", "UNDERBUST": "underbust", "APEX (BUST POINT)": "apex", "NECK DEPTH (FRONT)": "neckDepthFront", "NECK DEPTH (BACK)": "neckDepthBack", "TOP LENGTH": "topLength", "HIP": "hip", "THIGH": "thigh", "KNEE": "knee", "CALF": "calf", "INSEAM": "inseam", "OUTSEAM": "outseam", "LENGTH": "outseam", "ANKLE OPENING": "ankleOpening", "KURTI LENGTH": "kurtiLength", "SALWAR LENGTH": "salwarLength", "LEHENGA LENGTH": "lehengaLength", "LEHENGA WAIST": "lehengaWaist", "LEHENGA FLARE": "lehengaFlare", "DUPATTA LENGTH": "dupattaLength", "BLOUSE BACK STYLE": "blouseBackStyle",
+};
+
 // ── Helpers ────────────────────────────────────────────────────────────────
+// Builds blank value/unit pairs so every measurement field starts in a consistent shape.
 const initFields = (fields: string[]): FieldMap =>
   Object.fromEntries(fields.map((f) => [f, { value: "", unit: "cm" }]));
 
+// Builds the special traditional-wear fields that include a style selection.
 const initTraditional = (): FieldMap => ({
   "KURTI LENGTH":      { value: "", unit: "cm" },
   "SALWAR LENGTH":     { value: "", unit: "cm" },
@@ -134,7 +147,15 @@ const initTraditional = (): FieldMap => ({
   "BLOUSE BACK STYLE": { value: "Select style", unit: "" },
 });
 
+// Applies a saved record to a blank section while retaining the UI's unit defaults.
+const hydrateFields = (fields: FieldMap, measurement: StoredMeasurement): FieldMap =>
+  Object.fromEntries(Object.entries(fields).map(([label, field]) => {
+    const storedValue = measurement[STORED_FIELD_KEYS[label]];
+    return [label, { ...field, value: storedValue == null ? field.value : String(storedValue) }];
+  }));
+
 // ── Toast ──────────────────────────────────────────────────────────────────
+// Renders transient status feedback so saving actions are visible without interrupting the form.
 function Toast({ message, type, visible }: { message: string; type: "success" | "error" | "loading"; visible: boolean }) {
   if (!visible) return null;
   const config = {
@@ -152,6 +173,7 @@ function Toast({ message, type, visible }: { message: string; type: "success" | 
 }
 
 // ── MeasurementField ───────────────────────────────────────────────────────
+// Renders one reusable measurement value/unit control to keep all garment sections consistent.
 function MeasurementField({ label, value, unit, units = ["cm", "in"], onChange, onUnitChange }: MeasurementFieldProps) {
   const base = "bg-[#0b1525] border border-[#1e3a5f] rounded-lg text-slate-100 text-sm outline-none focus:border-cyan-500 transition-colors duration-200";
 
@@ -180,6 +202,7 @@ function MeasurementField({ label, value, unit, units = ["cm", "in"], onChange, 
 }
 
 // ── Main Component ─────────────────────────────────────────────────────────
+// Lets the authenticated customer enter and save measurements for each garment category.
 export default function BodyMeasurements() {
   const [gender, setGender]         = useState<Gender>("male");
   const [maleTab, setMaleTab]       = useState<MaleTabId>("upper");
@@ -201,22 +224,66 @@ export default function BodyMeasurements() {
     trad:  initTraditional(),
   }));
 
+  // Loads every saved section for the authenticated customer when the form opens.
+  useEffect(() => {
+    const loadMeasurements = async () => {
+      try {
+        const user = JSON.parse(localStorage.getItem("user") || "{}");
+        if (!user.userId) return;
+
+        const response = await axios.get<StoredMeasurement[]>(
+          `http://localhost:5000/api/measurements/${user.userId}`,
+          { headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` } }
+        );
+
+        setMaleData((previous) => {
+          const next = { ...previous };
+          response.data.filter((item) => item.gender === "male").forEach((item) => {
+            const type = item.type as MaleTabId;
+            if (type in next) next[type] = hydrateFields(next[type], item);
+          });
+          return next;
+        });
+        setFemaleData((previous) => {
+          const next = { ...previous };
+          response.data.filter((item) => item.gender === "female").forEach((item) => {
+            const type = item.type as FemaleTabId;
+            if (type in next) next[type] = hydrateFields(next[type], item);
+          });
+          return next;
+        });
+      } catch (error) {
+        const message = axios.isAxiosError(error)
+          ? error.response?.data?.message || "Unable to load saved measurements."
+          : "Unable to load saved measurements.";
+        showToast(message, "error");
+      }
+    };
+
+    void loadMeasurements();
+  }, []);
+
+  // Displays a status message shared by save and update actions.
   const showToast = (message: string, type: "success" | "error" | "loading") =>
     setToast({ message, type, visible: true });
+  // Hides the temporary status message after its display interval.
   const hideToast = () => setToast((t) => ({ ...t, visible: false }));
 
+  // Updates one field in the currently selected male measurement section.
   const handleMaleChange = (field: string, key: keyof FieldValue, val: string) =>
     setMaleData((prev) => ({
       ...prev,
       [maleTab]: { ...prev[maleTab], [field]: { ...prev[maleTab][field], [key]: val } },
     }));
 
+  // Updates one field in the currently selected female measurement section.
   const handleFemaleChange = (field: string, key: keyof FieldValue, val: string) =>
     setFemaleData((prev) => ({
       ...prev,
       [femaleTab]: { ...prev[femaleTab], [field]: { ...prev[femaleTab][field], [key]: val } },
     }));
 
+  // Sends the active measurement section to the API under the authenticated user's ID.
   const handleSave = async () => {
  const userData = localStorage.getItem("user");
 
@@ -239,7 +306,8 @@ const payload = {
 //send the payload to the backend using axios
 const response = await axios.post(
   "http://localhost:5000/api/measurements/save",
-  payload
+  payload,
+  { headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` } }
 );
 
 console.log(response.data);
@@ -256,6 +324,7 @@ console.log(response.data);
     setTimeout(hideToast, 3000);
   };
 
+  // Currently presents update feedback; it should call the same server upsert endpoint as Save.
   const handleUpdate = async () => {
     setIsUpdating(true);
     showToast("Updating measurements…", "loading");

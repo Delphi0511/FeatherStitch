@@ -1,6 +1,19 @@
 import { useState, useRef } from "react";
 
 const API_BASE = "http://localhost:5000/api/tailor";
+// Adds the JWT needed for tailor-only profile API requests.
+const authHeaders = (json = false): HeadersInit => ({
+  Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+  ...(json ? { "Content-Type": "application/json" } : {}),
+});
+// Gets the authenticated email so the tailor profile remains bound to the logged-in account.
+const getCurrentEmail = (): string => {
+  try {
+    return JSON.parse(localStorage.getItem("user") || "{}").email || "";
+  } catch {
+    return "";
+  }
+};
 
 const CITIES: string[] = [
   "Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai",
@@ -21,9 +34,11 @@ const emptyForm: FormState = {
   email: "", phone: "", address: "", city: "", state: "", shopAddress: "", shopCity: "",
 };
 
+// Renders the tailor's multi-step personal, professional, and contact profile form.
 const ProfileTailor = () => {
+  const currentEmail = getCurrentEmail();
   const [activeTab, setActiveTab] = useState<Tab>("personal");
-  const [form, setForm] = useState<FormState>(emptyForm);
+  const [form, setForm] = useState<FormState>({ ...emptyForm, email: currentEmail });
 
   const [profilePic, setProfilePic] = useState<string | null>(null);
   const [profilePicFile, setProfilePicFile] = useState<File | null>(null);
@@ -34,7 +49,7 @@ const ProfileTailor = () => {
   const [shopCitySuggestions, setShopCitySuggestions] = useState<string[]>([]);
 
   // --- new state for backend wiring ---
-  const [searchEmail, setSearchEmail] = useState<string>("");
+  const [searchEmail] = useState<string>(currentEmail);
   const [loading, setLoading] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
@@ -42,6 +57,7 @@ const ProfileTailor = () => {
   const profileRef = useRef<HTMLInputElement>(null);
   const aadharRef = useRef<HTMLInputElement>(null);
 
+  // Updates a profile field and maintains city suggestion lists for location inputs.
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
@@ -52,6 +68,7 @@ const ProfileTailor = () => {
     if (name === "shopCity") setShopCitySuggestions(value ? CITIES.filter(c => c.toLowerCase().startsWith(value.toLowerCase())) : []);
   };
 
+  // Captures a profile image and creates an immediate local preview before upload.
   const handleProfilePic = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -61,6 +78,7 @@ const ProfileTailor = () => {
     }
   };
 
+  // Keeps the selected verification-file name/preview in UI state; persistence is not implemented yet.
   const handleAadhar = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -70,6 +88,7 @@ const ProfileTailor = () => {
   };
 
   // --- GET /api/tailor/getTailor/:email ---
+  // Loads the signed-in tailor's existing profile into the form.
   const handleFindRecord = async () => {
     if (!searchEmail) {
       setError("Enter an email to search");
@@ -78,7 +97,9 @@ const ProfileTailor = () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`${API_BASE}/getTailor/${encodeURIComponent(searchEmail)}`);
+      const res = await fetch(`${API_BASE}/getTailor/${encodeURIComponent(searchEmail)}`, {
+        headers: authHeaders(),
+      });
       if (res.status === 404) {
         setError("No profile found for this email");
         setLoading(false);
@@ -98,7 +119,7 @@ const ProfileTailor = () => {
       if (data.profilePic) {
         // Backend stores a file path (e.g. from multer). Adjust this base
         // if your server serves uploads from a different static route.
-        setProfilePic(`http://localhost:5000/${data.profilePic.replace(/\\/g, "/")}`);
+        setProfilePic(data.profilePic);
       }
 
       setSaved(false);
@@ -110,6 +131,7 @@ const ProfileTailor = () => {
   };
 
   // --- POST /api/tailor/saveTailor + optional POST /api/tailor/upload-profile ---
+  // Saves profile data first, then uploads a newly selected Cloudinary profile picture.
   const handleSave = async () => {
     if (!form.email) {
       setError("Email is required to save a profile");
@@ -121,7 +143,7 @@ const ProfileTailor = () => {
     try {
       const res = await fetch(`${API_BASE}/saveTailor`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(true),
         body: JSON.stringify(form),
       });
       if (!res.ok) {
@@ -133,9 +155,9 @@ const ProfileTailor = () => {
       if (profilePicFile) {
         const fd = new FormData();
         fd.append("image", profilePicFile);
-        fd.append("userId", form.email); // controller reads req.body.userId as the email
         const picRes = await fetch(`${API_BASE}/upload-profile`, {
           method: "POST",
+          headers: authHeaders(),
           body: fd,
         });
         if (!picRes.ok) {
@@ -188,8 +210,7 @@ const ProfileTailor = () => {
           <input
             type="email"
             value={searchEmail}
-            onChange={(e) => setSearchEmail(e.target.value)}
-            placeholder="Search by email to load existing profile..."
+            readOnly
             className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all duration-200"
           />
           <button
@@ -377,7 +398,7 @@ const ProfileTailor = () => {
               <div className="grid grid-cols-2 gap-5">
                 <div>
                   <label className={labelClass}>Email <span className="text-red-400">*</span></label>
-                  <input name="email" value={form.email} onChange={handleChange}
+                  <input name="email" value={form.email} readOnly
                     placeholder="email@example.com" type="email" className={inputClass} />
                 </div>
                 <div>

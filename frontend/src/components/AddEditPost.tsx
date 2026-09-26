@@ -32,10 +32,12 @@ interface AddEditPostCardProps {
 
 const CATEGORIES = ["Sherwani", "Suit", "Casual wear", "Bridal wear", "Alterations"];
 const TURNAROUNDS = ["3-5 days", "1 week", "2 weeks", "3+ weeks"];
+// Must match MAX_POST_IMAGES in backend/middleware/uploadPost.js.
 const MAX_IMAGES = 6;
 
 // ---- Component ---------------------------------------------------------
 
+// Renders the create/edit post form and coordinates image selection with authenticated post CRUD.
 export default function AddEditPostCard({ post, onSaved, onDeleted, onCancel }: AddEditPostCardProps) {
   const isEditMode = Boolean(post);
 
@@ -54,6 +56,7 @@ export default function AddEditPostCard({ post, onSaved, onDeleted, onCancel }: 
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Adds only the remaining allowed files and creates local previews before upload.
   const handleFiles = (files: FileList | null) => {
     if (!files) return;
     const remaining = MAX_IMAGES - images.length;
@@ -67,10 +70,12 @@ export default function AddEditPostCard({ post, onSaved, onDeleted, onCancel }: 
     setImages((prev) => [...prev, ...next]);
   };
 
+  // Removes an image from the pending form state; the API removes persisted images on save.
   const removeImage = (id: string) => {
     setImages((prev) => prev.filter((img) => img.id !== id));
   };
 
+  // Creates or updates the post and reports server errors without losing the form state.
   const handleSave = async (status: "draft" | "published") => {
     setError(null);
     setSaving(true);
@@ -98,6 +103,7 @@ export default function AddEditPostCard({ post, onSaved, onDeleted, onCancel }: 
     }
   };
 
+  // Uses a two-click confirmation before deleting a persisted post and its remote images.
   const handleDeleteClick = async () => {
     if (!confirmingDelete) {
       setConfirmingDelete(true);
@@ -341,6 +347,7 @@ export default function AddEditPostCard({ post, onSaved, onDeleted, onCancel }: 
 
 // ---- Icons (inline, no external icon library required) -----------------
 
+// Provides the reusable back-navigation icon used by the post form header.
 function BackIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -349,6 +356,7 @@ function BackIcon() {
   );
 }
 
+// Provides the edit-state icon for the form heading.
 function PencilIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -358,6 +366,7 @@ function PencilIcon() {
   );
 }
 
+// Provides a configurable close/remove icon for controls and image thumbnails.
 function CloseIcon({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -366,6 +375,7 @@ function CloseIcon({ size = 16 }: { size?: number }) {
   );
 }
 
+// Provides the upload affordance inside the image drop zone.
 function UploadIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
@@ -375,6 +385,7 @@ function UploadIcon() {
   );
 }
 
+// Provides the add-more-images affordance after an initial selection.
 function PlusIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -383,6 +394,7 @@ function PlusIcon() {
   );
 }
 
+// Provides the destructive-action icon for the delete control.
 function TrashIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 4 }}>

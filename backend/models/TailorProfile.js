@@ -15,7 +15,7 @@ const TailorSchema = new Schema({
   since: { type: String },
   otherInfo: { type: String },
 
-  email: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
 
   phone: { type: String },
 

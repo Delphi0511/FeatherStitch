@@ -2,6 +2,7 @@
 import Measurement from "../models/Measurements.js";
 
 // helper to safely convert numbers
+// Converts optional form values to numbers so MongoDB receives numeric measurements, not strings.
 const num = (val) => {
   if (val === "" || val === undefined || val === null) {
     return undefined;
@@ -10,6 +11,7 @@ const num = (val) => {
   return Number(val);
 };
 
+// Translates UI field labels into the normalized measurement-schema field names.
 const mapFields = (data) => ({
   // Male Upper
   chest: num(data["CHEST"]?.value),
@@ -86,9 +88,11 @@ const mapFields = (data) => ({
     data["BLOUSE BACK STYLE"]?.value,
 });
 
+// Creates or updates one measurement section for the authenticated customer.
 export const saveMeasurement = async (req, res) => {
   try {
-    const { userId, gender, type, data } = req.body;
+    const { gender, type, data } = req.body;
+    const userId = req.user.userId;
 
     if (!userId || !gender || !type || !data) {
       return res.status(400).json({
@@ -140,9 +144,17 @@ export const saveMeasurement = async (req, res) => {
   }
 };
 
+// Returns only the authenticated customer's measurement records for loading the form.
 export const getMeasurements = async (req, res) => {
   try {
     const { userId } = req.params;
+
+    if (userId !== req.user.userId) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only view your own measurements",
+      });
+    }
 
     const measurements = await Measurement.find({
       userId,

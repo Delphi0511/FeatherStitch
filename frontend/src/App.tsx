@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import Signup from "./components/Signup";
 
 import Login from './components/Login';
@@ -11,6 +10,7 @@ import BodyMeasurements from './components/BodyMeasurements';
 import ProtectedRoute from "./components/ProtectedRoute";
 import AddEditPost from './components/AddEditPost';
 
+// Defines the application's public and role-protected client-side routes.
 function App() {
   return (
     <BrowserRouter>
@@ -42,11 +42,9 @@ function App() {
   element={
     <ProtectedRoute allowedRole="Tailor">
       <AddEditPost
-        onSave={(data, status) => {
-          console.log(data, status);
-        }}
+        onSaved={() => {}}
         onCancel={() => {
-          console.log("Cancelled");
+          window.history.back();
         }}
       />
     </ProtectedRoute>
@@ -86,5 +84,3 @@ function App() {
 }
 
 export default App;
-
-

@@ -1,15 +1,24 @@
 import Customer from "../models/CustomerProfile.js";
 
+// Creates or updates the signed-in customer's profile; JWT identity prevents saving under another email.
  export const saveCustomer = async (req, res) => {
 
  try {
 
-   const customer = new Customer(req.body);
+   const { name, address, city, state, gender } = req.body;
+   if (!name || !address || !city || !state || !gender) {
+     return res.status(400).json({ message: "All profile fields are required" });
+   }
 
-   await customer.save();
+   const customer = await Customer.findOneAndUpdate(
+     { emailId: req.user.email },
+     { emailId: req.user.email, name, address, city, state, gender },
+     { new: true, upsert: true, runValidators: true }
+   );
 
    res.status(200).json({
-     message: "Customer saved successfully"
+     message: "Customer saved successfully",
+     customer,
    });
 
  } catch (error) {
@@ -22,9 +31,10 @@ import Customer from "../models/CustomerProfile.js";
 
 };
 
+// Stores a Cloudinary profile-image URL on the signed-in customer's existing profile.
 export const uploadProfilePic = async (req, res) => {
   try {
-    const email = req.body.userId;
+    const email = req.user.email;
 
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
@@ -56,12 +66,16 @@ export const uploadProfilePic = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+// Updates only the customer profile whose email matches the authenticated user.
 export const updateCustomer = async (req, res) => {
   try {
+    if (req.params.email !== req.user.email) {
+      return res.status(403).json({ message: "You can only update your own profile" });
+    }
     const updatedCustomer = await Customer.findOneAndUpdate(
       { emailId: req.params.email },
-      req.body,
-      { new: true }
+      { ...req.body, emailId: req.user.email },
+      { new: true, runValidators: true }
     );
 
     if (!updatedCustomer) {
@@ -74,14 +88,17 @@ export const updateCustomer = async (req, res) => {
   }
 };
 
+// Retrieves the authenticated customer's own profile while rejecting cross-account lookups.
 export const getCustomerByEmail = async (req, res) => {
   try {
 
     const { email } = req.params;
 
-    const customer = await Customer.findOne({
-      emailId: email,
-    });
+    if (email !== req.user.email) {
+      return res.status(403).json({ message: "You can only view your own profile" });
+    }
+
+    const customer = await Customer.findOne({ emailId: email });
 
     if (!customer) {
       return res.status(404).json({

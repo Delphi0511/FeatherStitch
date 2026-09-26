@@ -6,6 +6,9 @@ import {
   saveMeasurement,
   getMeasurements,
 } from "../controllers/measurementsController.js";
+import { auth, requireRole } from "../middleware/auth.js";
+
+router.use(auth, requireRole("Customer"));
 
 // SAVE or UPDATE
 router.post("/save", saveMeasurement);

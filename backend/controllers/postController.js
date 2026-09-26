@@ -4,10 +4,12 @@ import cloudinary from "../config/cloudinary.js";
 
 // ---- Helpers -------------------------------------------------------
 
+// Normalizes a formatted price such as "₹4,500" before storing it as a number.
 function parsePrice(price) {
   return Number(String(price).replace(/[^\d]/g, ""));
 }
 
+// Converts the comma-separated tags sent by the form into the schema's string array.
 function parseTags(tags) {
   if (!tags) return [];
   return tags
@@ -18,6 +20,7 @@ function parseTags(tags) {
 
 // Pulls the Cloudinary public_id out of a stored secure_url so we can
 // delete the asset when a post is removed or an image is replaced.
+// Extracts a Cloudinary asset ID so an obsolete image can be deleted with its post.
 function getPublicIdFromUrl(url) {
   try {
     const parts = url.split("/");
@@ -30,6 +33,7 @@ function getPublicIdFromUrl(url) {
   }
 }
 
+// Deletes multiple Cloudinary images concurrently to avoid leaving unused upload assets behind.
 async function destroyImages(urls = []) {
   await Promise.all(
     urls.map((url) => {
@@ -42,6 +46,7 @@ async function destroyImages(urls = []) {
 
 // ---- Create ----------------------------------------------------------
 
+// Creates a post owned by the tailor profile associated with the verified JWT email.
 export const createPost = async (req, res) => {
   try {
     const tailor = await TailorProfile.findOne({
@@ -96,6 +101,7 @@ export const createPost = async (req, res) => {
 
 // ---- Read (list + single) --------------------------------------------
 
+// Lists the authenticated tailor's posts, newest first, for their portfolio management screen.
 export const getTailorPosts = async (req, res) => {
   try {
     const tailor = await TailorProfile.findOne({
@@ -127,8 +133,14 @@ export const getTailorPosts = async (req, res) => {
   }
 };
 
+// Returns one post only after confirming it belongs to the authenticated tailor.
 export const getPostById = async (req, res) => {
   try {
+    const tailor = await TailorProfile.findOne({ email: req.user.email });
+    if (!tailor) {
+      return res.status(404).json({ success: false, message: "Tailor profile not found" });
+    }
+
     const post = await Post.findById(req.params.id);
 
     if (!post) {
@@ -136,6 +148,10 @@ export const getPostById = async (req, res) => {
         success: false,
         message: "Post not found",
       });
+    }
+
+    if (post.tailor.toString() !== tailor._id.toString()) {
+      return res.status(403).json({ success: false, message: "You are not allowed to view this post" });
     }
 
     return res.status(200).json({
@@ -154,6 +170,7 @@ export const getPostById = async (req, res) => {
 
 // ---- Update ------------------------------------------------------------
 
+// Updates a tailor-owned post and reconciles Cloudinary images removed in the form.
 export const updatePost = async (req, res) => {
   try {
     const tailor = await TailorProfile.findOne({
@@ -243,6 +260,7 @@ export const updatePost = async (req, res) => {
 
 // ---- Delete ------------------------------------------------------------
 
+// Deletes a tailor-owned post and its associated Cloudinary images.
 export const deletePost = async (req, res) => {
   try {
     const tailor = await TailorProfile.findOne({

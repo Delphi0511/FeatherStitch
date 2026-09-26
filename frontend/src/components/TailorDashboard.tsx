@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 
+// Shows the tailor's primary navigation and clears session data when logging out.
 const TailorDashboard = () => {
   const navigate = useNavigate();
 
@@ -78,7 +79,7 @@ const TailorDashboard = () => {
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-sky-600 flex items-center justify-center text-base shadow-lg shadow-cyan-900/40">
             🧵
           </div>
-          <span className="text-white font-bold text-lg tracking-tight">TailorPro</span>
+          <span className="text-white font-bold text-lg tracking-tight">FeatherStitch</span>
         </div>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-sky-600 flex items-center justify-center text-white text-xs font-bold shadow-md">
@@ -111,7 +112,15 @@ const TailorDashboard = () => {
           {cards.map((card) => (
             <button
               key={card.title}
-              onClick={() => navigate(card.route)}
+              onClick={() => {
+                if (card.logout) {
+                  localStorage.removeItem("token");
+                  localStorage.removeItem("user");
+                  navigate("/login");
+                  return;
+                }
+                navigate(card.route);
+              }}
               className={`group relative rounded-2xl overflow-hidden border border-slate-700/60 bg-slate-800/40 hover:border-slate-600 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl ${card.glow} ring-1 ${card.ring} text-left`}
             >
               {/* Card Image */}

@@ -1,5 +1,6 @@
 import express from "express";
 import upload from "../middleware/upload.js";
+import { auth, requireRole } from "../middleware/auth.js";
 
 import {
   saveTailor,
@@ -9,6 +10,8 @@ import {
 } from "../controllers/tailorController.js";
 
 const router = express.Router();
+
+router.use(auth, requireRole("Tailor"));
 
 router.post("/saveTailor", saveTailor);
 

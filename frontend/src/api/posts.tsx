@@ -18,16 +18,19 @@ interface ApiResponse<T> {
   posts?: T[];
 }
 
+// Reads the current JWT so post requests can identify the signed-in tailor.
 function getToken(): string | null {
   return localStorage.getItem("token");
 }
 
+// Builds the bearer-auth header required by protected post endpoints.
 function authHeaders(): HeadersInit {
   return {
     Authorization: `Bearer ${getToken()}`,
   };
 }
 
+// Encodes post fields and optional image files as multipart data for Cloudinary uploads.
 function buildFormData(postData: PostFormPayload, status: PostStatus): FormData {
   const formData = new FormData();
 
@@ -54,6 +57,7 @@ function buildFormData(postData: PostFormPayload, status: PostStatus): FormData 
   return formData;
 }
 
+// Converts API responses into a consistent result and surfaces server error messages to the UI.
 async function handleResponse<T>(res: Response): Promise<ApiResponse<T>> {
   const data: ApiResponse<T> = await res.json();
   if (!res.ok) {
@@ -64,6 +68,7 @@ async function handleResponse<T>(res: Response): Promise<ApiResponse<T>> {
 
 // The server returns raw Mongoose docs (_id, tags: string[], images: string[]).
 // Normalize that into the shape the form actually works with.
+// Adapts MongoDB post fields to the form's client-side data shape.
 function normalizePost(raw: any): PostData {
   const images: PostImage[] = (raw.images ?? []).map((url: string) => ({
     id: url,
@@ -82,6 +87,7 @@ function normalizePost(raw: any): PostData {
   };
 }
 
+// Sends a new authenticated tailor post to the API and returns form-ready data.
 export async function createPost(
   postData: PostFormPayload,
   status: PostStatus
@@ -98,6 +104,7 @@ export async function createPost(
   return normalizePost(data.post);
 }
 
+// Saves edits to an existing post while preserving the selected status and images.
 export async function updatePost(
   id: string,
   postData: PostFormPayload,
@@ -115,6 +122,7 @@ export async function updatePost(
   return normalizePost(data.post);
 }
 
+// Removes a post through the authenticated API so its server-side images are also cleaned up.
 export async function deletePost(id: string): Promise<void> {
   const res = await fetch(`${API_BASE}/${id}`, {
     method: "DELETE",
@@ -124,6 +132,7 @@ export async function deletePost(id: string): Promise<void> {
   await handleResponse<never>(res);
 }
 
+// Loads the signed-in tailor's portfolio posts for a future list or gallery view.
 export async function getTailorPosts(): Promise<PostData[]> {
   const res = await fetch(API_BASE, {
     method: "GET",
@@ -134,6 +143,7 @@ export async function getTailorPosts(): Promise<PostData[]> {
   return (data.posts ?? []).map(normalizePost);
 }
 
+// Loads one authorized post for editing.
 export async function getPostById(id: string): Promise<PostData> {
   const res = await fetch(`${API_BASE}/${id}`, {
     method: "GET",
