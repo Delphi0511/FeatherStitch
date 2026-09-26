@@ -8,7 +8,9 @@ import CustomerProfile from './components/CustomerProfile';
 import TailorProfile from './components/TailorProfile';
 import BodyMeasurements from './components/BodyMeasurements';
 import ProtectedRoute from "./components/ProtectedRoute";
-import AddEditPost from './components/AddEditPost';
+import MyPosts from './components/MyPosts';
+import PostEditorPage from './components/PostEditorPage';
+import TailorGallery from './components/TailorGallery';
 
 // Defines the application's public and role-protected client-side routes.
 function App() {
@@ -38,18 +40,40 @@ function App() {
       }
     />
     <Route
-  path="/posts"
-  element={
-    <ProtectedRoute allowedRole="Tailor">
-      <AddEditPost
-        onSaved={() => {}}
-        onCancel={() => {
-          window.history.back();
-        }}
-      />
-    </ProtectedRoute>
-  }
-/>
+      path="/posts"
+      element={
+        <ProtectedRoute allowedRole="Tailor">
+          <MyPosts />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
+      path="/tailorgallery"
+      element={
+        <ProtectedRoute allowedRole="Tailor">
+          <TailorGallery />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
+      path="/posts/new"
+      element={
+        <ProtectedRoute allowedRole="Tailor">
+          <PostEditorPage />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
+      path="/posts/:id/edit"
+      element={
+        <ProtectedRoute allowedRole="Tailor">
+          <PostEditorPage />
+        </ProtectedRoute>
+      }
+    />
 
     {/* Customer Routes */}
     <Route

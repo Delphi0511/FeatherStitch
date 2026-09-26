@@ -73,8 +73,8 @@ const Login: React.FC = () => {
       {/* ── LEFT: Full bleed image ── */}
       <div className="hidden lg:block w-1/2 relative h-full">
         <img
-          src="https://images.unsplash.com/photo-1520975916090-3105956dac38"
-          alt="Fashion"
+          src="https://images.unsplash.com/photo-1534126511673-b6899657816a?w=1200&q=80"
+          alt="Tailor sewing at a machine"
           className="w-full h-full object-cover"
         />
         {/* Fades */}
@@ -86,27 +86,7 @@ const Login: React.FC = () => {
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-sky-600 flex items-center justify-center text-lg shadow-lg shadow-cyan-900/40">
             🧵
           </div>
-          <span className="text-white font-bold text-lg tracking-tight">TailorPro</span>
-        </div>
-
-        {/* Bottom tagline */}
-        <div className="absolute bottom-10 left-10 z-10">
-          <h2 className="text-3xl font-extrabold text-white leading-tight mb-2">
-            Welcome<br />Back.
-          </h2>
-          <p className="text-slate-300 text-sm">Sign in to manage your tailor experience.</p>
-
-          {/* Feature dots */}
-          <div className="flex flex-col gap-2 mt-5">
-            {["Find expert tailors near you", "Track your orders in real-time", "Custom fits, guaranteed"].map((f) => (
-              <div key={f} className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-cyan-500/20 flex items-center justify-center">
-                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-                </div>
-                <span className="text-slate-300 text-xs">{f}</span>
-              </div>
-            ))}
-          </div>
+          <span className="text-white font-bold text-lg tracking-tight">FeatherStitch</span>
         </div>
       </div>
 
@@ -122,7 +102,7 @@ const Login: React.FC = () => {
           {/* Mobile logo */}
           <div className="flex items-center gap-2 mb-10 lg:hidden">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-sky-600 flex items-center justify-center text-base">🧵</div>
-            <span className="text-white font-bold text-lg">TailorPro</span>
+            <span className="text-white font-bold text-lg">FeatherStitch</span>
           </div>
 
           {/* Cyan top line */}

@@ -32,7 +32,7 @@ const TailorDashboard = () => {
       gradient: "from-emerald-600 to-green-700",
       glow: "shadow-emerald-900/50",
       ring: "ring-emerald-500/30",
-      route: "/gallery",
+      route: "/tailorgallery",
       img: "https://images.unsplash.com/photo-1445205170230-053b83016050?w=400&q=80",
     },
     {

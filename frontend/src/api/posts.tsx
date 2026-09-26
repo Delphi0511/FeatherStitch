@@ -6,7 +6,7 @@ export type PostStatus = "draft" | "published";
 
 // The shape the form actually submits: price is still a raw string
 // (e.g. "₹4,500") at this point — the server parses it, not the client.
-export type PostFormPayload = Omit<PostData, "id" | "price" | "tags"> & {
+export type PostFormPayload = Omit<PostData, "id" | "price" | "tags" | "status"> & {
   price: string;
   tags: string;
 };
@@ -57,11 +57,23 @@ function buildFormData(postData: PostFormPayload, status: PostStatus): FormData 
   return formData;
 }
 
+// Formats a stored numeric price for display, e.g. 14500 -> "₹14,500".
+export const formatPrice = (price: number) => `₹${price.toLocaleString("en-IN")}`;
+
+// Carries the HTTP status so screens can react to specific failures (e.g. 404 = no tailor profile yet).
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 // Converts API responses into a consistent result and surfaces server error messages to the UI.
 async function handleResponse<T>(res: Response): Promise<ApiResponse<T>> {
   const data: ApiResponse<T> = await res.json();
   if (!res.ok) {
-    throw new Error(data.message || "Request failed");
+    throw new ApiError(data.message || "Request failed", res.status);
   }
   return data;
 }
@@ -84,6 +96,7 @@ function normalizePost(raw: any): PostData {
     price: raw.price ?? 0,
     tags: Array.isArray(raw.tags) ? raw.tags.join(", ") : raw.tags ?? "",
     images,
+    status: raw.status === "Published" ? "published" : "draft",
   };
 }
 

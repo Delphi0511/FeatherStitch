@@ -66,8 +66,8 @@ const Signup: React.FC = () => {
       {/* ── LEFT: Full bleed image ── */}
       <div className="hidden lg:block w-1/2 relative h-full">
         <img
-          src="https://images.unsplash.com/photo-1520975916090-3105956dac38"
-          alt="Fashion"
+          src="https://images.unsplash.com/photo-1534126511673-b6899657816a?w=1200&q=80"
+          alt="Tailor sewing at a machine"
           className="w-full h-full object-cover"
         />
         {/* Right fade to dark */}
@@ -79,15 +79,7 @@ const Signup: React.FC = () => {
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-sky-600 flex items-center justify-center text-lg shadow-lg shadow-cyan-900/40">
             🧵
           </div>
-          <span className="text-white font-bold text-lg tracking-tight">TailorPro</span>
-        </div>
-
-        {/* Bottom tagline */}
-        <div className="absolute bottom-10 left-10 z-10">
-          <h2 className="text-3xl font-extrabold text-white leading-tight mb-2">
-            Your Style,<br />Our Craft.
-          </h2>
-          <p className="text-slate-300 text-sm">Connect with professional tailors near you.</p>
+          <span className="text-white font-bold text-lg tracking-tight">FeatherStitch</span>
         </div>
       </div>
 
@@ -103,7 +95,7 @@ const Signup: React.FC = () => {
           {/* Mobile logo */}
           <div className="flex items-center gap-2 mb-8 lg:hidden">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-sky-600 flex items-center justify-center text-base">🧵</div>
-            <span className="text-white font-bold text-lg">TailorPro</span>
+            <span className="text-white font-bold text-lg">FeatherStitch</span>
           </div>
 
           {/* Cyan top line */}

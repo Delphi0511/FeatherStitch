@@ -18,6 +18,8 @@ export interface PostData {
   price: number;
   tags: string;
   images: PostImage[];
+  /** Set on posts loaded from the server; the form picks the status per save button. */
+  status?: "draft" | "published";
 }
 
 interface AddEditPostCardProps {
@@ -336,7 +338,7 @@ export default function AddEditPostCard({ post, onSaved, onDeleted, onCancel }: 
               onClick={() => handleSave("published")}
               disabled={saving}
             >
-              {saving ? "Saving..." : isEditMode ? "Update post" : "Publish post"}
+              {saving ? "Saving..." : post?.status === "published" ? "Update post" : "Publish post"}
             </button>
           </div>
         </div>
