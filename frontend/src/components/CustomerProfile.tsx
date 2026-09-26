@@ -1,5 +1,8 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import type { ChangeEvent } from "react";
+import { useNavigate } from "react-router-dom";
+
+const API_BASE = "http://localhost:5000/api/customer";
 
 interface FormState {
   email: string;
@@ -27,20 +30,57 @@ const getCurrentEmail = (): string => {
 
 // Presents the authenticated customer's profile, image upload, and save/update actions.
 const CustomerProfile = () => {
+  const currentEmail = getCurrentEmail();
   const [form, setForm] = useState<FormState>({
-    email: getCurrentEmail(), name: "", address: "", city: "", state: "", gender: "",
+    email: currentEmail, name: "", address: "", city: "", state: "", gender: "",
   });
   const [profilePic, setProfilePic] = useState<string | null>(null);
   const [saved, setSaved] = useState<boolean>(false);
-  const [updated, setUpdated] = useState<boolean>(false);
   const [file, setFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  // True when the customer has never saved a profile, so the form starts empty on purpose.
+  const [isNewProfile, setIsNewProfile] = useState<boolean>(false);
+  const [saving, setSaving] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
+
+  // Loads the signed-in customer's saved profile (and photo) as soon as the page opens.
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/getCustomer/${encodeURIComponent(currentEmail)}`, {
+          headers: authHeaders(),
+        });
+        if (response.status === 404) {
+          setIsNewProfile(true);
+          return;
+        }
+        if (!response.ok) throw new Error("Could not load your profile");
+        const data = await response.json();
+        setForm({
+          email: data.emailId || currentEmail,
+          name: data.name || "",
+          address: data.address || "",
+          city: data.city || "",
+          state: data.state || "",
+          gender: data.gender || "",
+        });
+        if (data.profilePic) setProfilePic(data.profilePic);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not load your profile");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadProfile();
+  }, [currentEmail]);
 
   // Keeps editable form fields synchronized with the user's input and clears stale success states.
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>): void => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setSaved(false);
-    setUpdated(false);
   };
 
   // Opens the hidden file input
@@ -59,67 +99,16 @@ const CustomerProfile = () => {
     setProfilePic(URL.createObjectURL(selectedFile));
   };
 
-  // Uploads pic to server — called inside saveCustomer
-  // Uploads the selected image after the profile exists, allowing the API to associate it safely.
-  const uploadProfilePic = async (): Promise<void> => {
-    if (!file) return;
-    const formData = new FormData();
-    formData.append("image", file);
-    await fetch("http://localhost:5000/api/customer/upload-profile", {
-      method: "POST",
-      headers: authHeaders(),
-      body: formData,
-    });
-  };
-  // Sends edits for the signed-in customer's existing profile.
-  const handleUpdate = async () => {
-  try {
-    const res = await fetch(`http://localhost:5000/api/customer/${form.email}`, {
-      method: "PUT",
-      headers: authHeaders(true),
-      body: JSON.stringify(form),
-    });
-
-    const data = await res.json();
-    console.log(data);
-
-    alert("Profile Updated Successfully");
-  } catch (err) {
-    console.error(err);
-  }
-};
-
-  // Loads the current customer's saved profile using their locked login email.
-  const searchCustomer = async (): Promise<void> => {
-    try {
-      const response = await fetch(`http://localhost:5000/api/customer/getCustomer/${form.email}`, {
-        headers: authHeaders(),
-      });
-      const data = await response.json();
-      if (data) {
-        setForm({
-          email: data.emailId,
-          name: data.name,
-          address: data.address,
-          city: data.city,
-          state: data.state,
-          gender: data.gender,
-        });
-      }
-    } catch (error) {
-      console.error("Search error:", error);
-    }
-  };
-
-  // Saves form data AND uploads pic (if one was selected) together
-  // Creates the profile if needed, then uploads a selected image after a successful save.
+  // Creates or updates the profile (the server upserts), then uploads a newly selected photo.
   const saveCustomer = async (): Promise<void> => {
+    setSaving(true);
+    setSaved(false);
+    setError("");
     try {
-      const response = await fetch("http://localhost:5000/api/customer/saveCustomer", {
+      const response = await fetch(`${API_BASE}/saveCustomer`, {
         method: "POST",
         headers: authHeaders(true),
         body: JSON.stringify({
-          emailId: form.email,
           name: form.name,
           address: form.address,
           city: form.city,
@@ -127,18 +116,36 @@ const CustomerProfile = () => {
           gender: form.gender,
         }),
       });
-
-      if (response.ok) {
-        if (file) await uploadProfilePic();
-        setSaved(true);
-        setUpdated(false);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || "Could not save your profile");
       }
-    } catch (error) {
-      console.error("Error saving customer:", error);
+
+      // The photo is attached to the saved profile, so it uploads only after the save succeeds.
+      if (file) {
+        const formData = new FormData();
+        formData.append("image", file);
+        const picRes = await fetch(`${API_BASE}/upload-profile`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: formData,
+        });
+        if (!picRes.ok) {
+          const errData = await picRes.json().catch(() => ({}));
+          throw new Error(errData.error || "Profile saved, but the photo upload failed");
+        }
+        setFile(null);
+      }
+
+      setSaved(true);
+      setIsNewProfile(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save your profile");
+    } finally {
+      setSaving(false);
     }
   };
 
- 
 
   const inputClass =
     "w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all duration-200";
@@ -163,11 +170,27 @@ const CustomerProfile = () => {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-sky-600 flex items-center justify-center text-lg shadow-lg">
               👤
             </div>
-            <div>
+            <div className="flex-1">
               <h1 className="text-2xl font-bold text-white tracking-tight">Customer Profile</h1>
               <p className="text-slate-400 text-xs mt-0.5">Manage customer information</p>
             </div>
+            <button
+              type="button"
+              onClick={() => navigate("/customerdashboard")}
+              className="text-slate-400 hover:text-white text-sm transition-colors"
+            >
+              ← Dashboard
+            </button>
           </div>
+        </div>
+
+        {/* Account status */}
+        <div className="bg-slate-800/50 border-b border-slate-700 px-10 py-3 text-sm text-slate-400">
+          {loading
+            ? "Loading your profile…"
+            : isNewProfile
+              ? "Welcome! Fill in your details below and save to create your profile."
+              : <>Signed in as <span className="text-slate-200">{form.email}</span></>}
         </div>
 
         {/* Body */}
@@ -177,22 +200,14 @@ const CustomerProfile = () => {
             {/* Left: Fields */}
             <div className="flex-1 space-y-5">
 
-              {/* Email + Search */}
+              {/* Email (fixed to the login account) */}
               <div>
                 <label className={labelClass}>Email ID</label>
-                <div className="flex gap-3">
-                  <input
-                    name="email" value={form.email} readOnly
-                    type="email"
-                    className={inputClass}
-                  />
-                  <button
-                    onClick={searchCustomer}
-                    className="px-5 py-3 bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-500 hover:to-sky-500 text-white text-sm font-semibold rounded-xl transition-all duration-200 whitespace-nowrap shadow-md shadow-cyan-900/40"
-                  >
-                    Search
-                  </button>
-                </div>
+                <input
+                  name="email" value={form.email} readOnly
+                  type="email"
+                  className={`${inputClass} text-slate-400 cursor-not-allowed`}
+                />
               </div>
 
               {/* Name */}
@@ -288,30 +303,25 @@ const CustomerProfile = () => {
           </div>
 
           {/* Status Messages */}
+          {error && (
+            <div className="mt-5 px-4 py-3 bg-red-900/30 border border-red-600/40 text-red-400 text-sm font-medium rounded-lg text-center">
+              ⚠️ {error}
+            </div>
+          )}
           {saved && (
             <div className="mt-5 px-4 py-3 bg-cyan-900/30 border border-cyan-600/40 text-cyan-400 text-sm font-medium rounded-lg text-center">
               ✓ Profile saved successfully!
             </div>
           )}
-          {updated && (
-            <div className="mt-5 px-4 py-3 bg-sky-900/30 border border-sky-600/40 text-sky-400 text-sm font-medium rounded-lg text-center">
-              ✓ Profile updated successfully!
-            </div>
-          )}
 
-          {/* Save / Update buttons */}
-          <div className="flex gap-4 mt-8">
+          {/* Save (creates the profile the first time, updates it afterwards) */}
+          <div className="mt-8">
             <button
               onClick={saveCustomer}
-              className="flex-1 py-3 bg-transparent border-2 border-cyan-500 text-cyan-400 font-bold text-sm rounded-xl hover:bg-cyan-500 hover:text-slate-900 transition-all duration-200"
+              disabled={saving || loading}
+              className="w-full py-3 bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-500 hover:to-sky-500 disabled:opacity-50 text-white font-bold text-sm rounded-xl transition-all duration-200 shadow-md shadow-cyan-900/40"
             >
-              Save
-            </button>
-            <button
-              onClick={handleUpdate}
-              className="flex-1 py-3 bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-500 hover:to-sky-500 text-white font-bold text-sm rounded-xl transition-all duration-200 shadow-md shadow-cyan-900/40"
-            >
-              Update
+              {saving ? "Saving..." : "Save Profile"}
             </button>
           </div>
         </div>

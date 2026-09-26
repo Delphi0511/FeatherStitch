@@ -1,8 +1,20 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getTailorPosts } from "../api/posts.tsx";
 
 // Shows the tailor's primary navigation and clears session data when logging out.
 const TailorDashboard = () => {
   const navigate = useNavigate();
+  const [postStats, setPostStats] = useState<{ posts: number; photos: number } | null>(null);
+
+  // Counts the tailor's posts and their photos; a tailor without a profile simply has none yet.
+  useEffect(() => {
+    getTailorPosts()
+      .then((posts) =>
+        setPostStats({ posts: posts.length, photos: posts.reduce((sum, p) => sum + p.images.length, 0) })
+      )
+      .catch(() => setPostStats({ posts: 0, photos: 0 }));
+  }, []);
 
   const cards = [
     {
@@ -173,10 +185,11 @@ const TailorDashboard = () => {
         {/* Stats Row */}
         <div className="grid grid-cols-4 gap-4 mt-8">
           {[
-            { label: "Total Orders", value: "128", icon: "📦", color: "text-cyan-400" },
-            { label: "Customers", value: "64", icon: "👥", color: "text-violet-400" },
-            { label: "Posts", value: "32", icon: "✏️", color: "text-emerald-400" },
-            { label: "Gallery Items", value: "47", icon: "🖼️", color: "text-amber-400" },
+            // Orders and customers don't exist in the backend yet.
+            { label: "Total Orders", value: "—", icon: "📦", color: "text-cyan-400" },
+            { label: "Customers", value: "—", icon: "👥", color: "text-violet-400" },
+            { label: "Posts", value: postStats ? String(postStats.posts) : "…", icon: "✏️", color: "text-emerald-400" },
+            { label: "Gallery Photos", value: postStats ? String(postStats.photos) : "…", icon: "🖼️", color: "text-amber-400" },
           ].map((stat) => (
             <div
               key={stat.label}

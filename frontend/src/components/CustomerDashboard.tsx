@@ -56,7 +56,7 @@ const CustomerDashboard = () => {
     },
     {
       title: "Gallery",
-      description: "Browse tailor portfolios and get inspired",
+      description: "All the designs you have ordered",
       icon: "🖼️",
       gradient: "from-amber-600 to-orange-700",
       glow: "shadow-amber-900/50",

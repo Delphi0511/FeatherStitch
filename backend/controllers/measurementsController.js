@@ -88,6 +88,31 @@ const mapFields = (data) => ({
     data["BLOUSE BACK STYLE"]?.value,
 });
 
+// Form label -> schema field, used to record which unit each entered value was measured in.
+const UNIT_FIELD_KEYS = {
+  "CHEST": "chest", "WAIST": "waist", "SHOULDER WIDTH": "shoulderWidth", "SHOULDER": "shoulderWidth",
+  "SLEEVE LENGTH": "sleeveLength", "ARMHOLE": "armhole", "NECK": "neck", "SHIRT LENGTH": "shirtLength",
+  "BICEP": "bicep", "WRIST": "wrist", "BUST": "bust", "UNDERBUST": "underbust", "APEX (BUST POINT)": "apex",
+  "NECK DEPTH (FRONT)": "neckDepthFront", "NECK DEPTH (BACK)": "neckDepthBack", "TOP LENGTH": "topLength",
+  "HIP": "hip", "THIGH": "thigh", "KNEE": "knee", "CALF": "calf", "INSEAM": "inseam", "OUTSEAM": "outseam",
+  "LENGTH": "outseam", "ANKLE OPENING": "ankleOpening", "KURTI LENGTH": "kurtiLength",
+  "SALWAR LENGTH": "salwarLength", "LEHENGA LENGTH": "lehengaLength", "LEHENGA WAIST": "lehengaWaist",
+  "LEHENGA FLARE": "lehengaFlare", "DUPATTA LENGTH": "dupattaLength",
+};
+const ALLOWED_UNITS = ["cm", "in", "m"];
+
+// Collects the unit of every filled-in measurement so values can't be misread later (40 in vs 40 cm).
+const mapUnits = (data) => {
+  const units = {};
+  for (const [label, field] of Object.entries(data)) {
+    const key = UNIT_FIELD_KEYS[label];
+    if (key && num(field?.value) !== undefined && ALLOWED_UNITS.includes(field?.unit)) {
+      units[key] = field.unit;
+    }
+  }
+  return units;
+};
+
 // Creates or updates one measurement section for the authenticated customer.
 export const saveMeasurement = async (req, res) => {
   try {
@@ -101,7 +126,7 @@ export const saveMeasurement = async (req, res) => {
       });
     }
 
-    const mappedData = mapFields(data);
+    const mappedData = { ...mapFields(data), units: mapUnits(data) };
 
     let existing = await Measurement.findOne({
       userId,

@@ -11,6 +11,10 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import MyPosts from './components/MyPosts';
 import PostEditorPage from './components/PostEditorPage';
 import TailorGallery from './components/TailorGallery';
+import FindTailor from './components/FindTailor';
+import TailorPublicPage from './components/TailorPublicPage';
+import CustomerGallery from './components/CustomerGallery';
+import NotFound from './components/NotFound';
 
 // Defines the application's public and role-protected client-side routes.
 function App() {
@@ -102,6 +106,36 @@ function App() {
         </ProtectedRoute>
       }
     />
+
+    <Route
+      path="/findtailor"
+      element={
+        <ProtectedRoute allowedRole="Customer">
+          <FindTailor />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
+      path="/tailors/:id"
+      element={
+        <ProtectedRoute allowedRole="Customer">
+          <TailorPublicPage />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
+      path="/gallery"
+      element={
+        <ProtectedRoute allowedRole="Customer">
+          <CustomerGallery />
+        </ProtectedRoute>
+      }
+    />
+
+    {/* Any other URL (e.g. features not built yet) */}
+    <Route path="*" element={<NotFound />} />
   </Routes>
 </BrowserRouter>
   )

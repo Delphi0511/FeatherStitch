@@ -57,6 +57,13 @@ function buildFormData(postData: PostFormPayload, status: PostStatus): FormData 
   return formData;
 }
 
+// Asks Cloudinary for a resized copy so grids don't download full-size photos.
+// Non-Cloudinary URLs (e.g. local blob previews) are returned unchanged.
+export const thumbUrl = (url: string, width = 600) =>
+  url.includes("res.cloudinary.com") && url.includes("/image/upload/")
+    ? url.replace("/image/upload/", `/image/upload/c_limit,w_${width},q_auto,f_auto/`)
+    : url;
+
 // Formats a stored numeric price for display, e.g. 14500 -> "₹14,500".
 export const formatPrice = (price: number) => `₹${price.toLocaleString("en-IN")}`;
 
@@ -81,7 +88,7 @@ async function handleResponse<T>(res: Response): Promise<ApiResponse<T>> {
 // The server returns raw Mongoose docs (_id, tags: string[], images: string[]).
 // Normalize that into the shape the form actually works with.
 // Adapts MongoDB post fields to the form's client-side data shape.
-function normalizePost(raw: any): PostData {
+export function normalizePost(raw: any): PostData {
   const images: PostImage[] = (raw.images ?? []).map((url: string) => ({
     id: url,
     url,

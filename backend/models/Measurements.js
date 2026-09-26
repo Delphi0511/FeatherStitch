@@ -56,6 +56,13 @@ const measurementSchema = new mongoose.Schema(
     dupattaLength: Number,
 
     blouseBackStyle: String,
+
+    // Unit chosen for each measurement, keyed by field name (e.g. { chest: "in", dupattaLength: "m" }).
+    units: {
+      type: Map,
+      of: { type: String, enum: ["cm", "in", "m"] },
+      default: {},
+    },
   },
   { timestamps: true }
 );

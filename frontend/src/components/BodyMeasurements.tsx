@@ -15,6 +15,7 @@ type FieldMap = Record<string, FieldValue>;
 interface StoredMeasurement {
   gender: Gender;
   type: MaleTabId | FemaleTabId;
+  units?: Record<string, string>;
   [key: string]: unknown;
 }
 
@@ -150,8 +151,13 @@ const initTraditional = (): FieldMap => ({
 // Applies a saved record to a blank section while retaining the UI's unit defaults.
 const hydrateFields = (fields: FieldMap, measurement: StoredMeasurement): FieldMap =>
   Object.fromEntries(Object.entries(fields).map(([label, field]) => {
-    const storedValue = measurement[STORED_FIELD_KEYS[label]];
-    return [label, { ...field, value: storedValue == null ? field.value : String(storedValue) }];
+    const key = STORED_FIELD_KEYS[label];
+    const storedValue = measurement[key];
+    const storedUnit = measurement.units?.[key];
+    return [label, {
+      value: storedValue == null ? field.value : String(storedValue),
+      unit: storedUnit || field.unit,
+    }];
   }));
 
 // ── Toast ──────────────────────────────────────────────────────────────────
@@ -256,7 +262,7 @@ export default function BodyMeasurements() {
         const message = axios.isAxiosError(error)
           ? error.response?.data?.message || "Unable to load saved measurements."
           : "Unable to load saved measurements.";
-        showToast(message, "error");
+        setToast({ message, type: "error", visible: true });
       }
     };
 
@@ -283,59 +289,39 @@ export default function BodyMeasurements() {
       [femaleTab]: { ...prev[femaleTab], [field]: { ...prev[femaleTab][field], [key]: val } },
     }));
 
-  // Sends the active measurement section to the API under the authenticated user's ID.
-  const handleSave = async () => {
- const userData = localStorage.getItem("user");
-
-if (!userData) {
-  alert("User not found. Please login again.");
-  return;
-}
-
-const user = JSON.parse(userData);
-
-const payload = {
-  userId: user.userId,
-  gender,
-  type: gender === "male" ? maleTab : femaleTab,
-  data:
-    gender === "male"
-      ? maleData[maleTab]
-      : femaleData[femaleTab],
-};
-//send the payload to the backend using axios
-const response = await axios.post(
-  "http://localhost:5000/api/measurements/save",
-  payload,
-  { headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` } }
-);
-
-console.log(response.data);
-
-    setIsSaving(true);
-    showToast("Saving measurements…", "loading");
-    const snapshot = gender === "male"
-      ? { gender, tab: maleTab, data: maleData[maleTab] }
-      : { gender, tab: femaleTab, data: femaleData[femaleTab] };
-    console.log("Saved:", JSON.stringify(snapshot, null, 2));
-    await new Promise((r) => setTimeout(r, 800));
-    setIsSaving(false);
-    showToast("Measurements saved!", "success");
+  // Sends the active section (values + units) to the server's upsert endpoint and reports the real outcome.
+  const persistSection = async (verb: "Saving" | "Updating", done: string) => {
+    showToast(`${verb} measurements…`, "loading");
+    try {
+      await axios.post(
+        "http://localhost:5000/api/measurements/save",
+        {
+          gender,
+          type: gender === "male" ? maleTab : femaleTab,
+          data: gender === "male" ? maleData[maleTab] : femaleData[femaleTab],
+        },
+        { headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` } }
+      );
+      showToast(done, "success");
+    } catch (error) {
+      const message = axios.isAxiosError(error)
+        ? error.response?.data?.message || "Could not save measurements."
+        : "Could not save measurements.";
+      showToast(message, "error");
+    }
     setTimeout(hideToast, 3000);
   };
 
-  // Currently presents update feedback; it should call the same server upsert endpoint as Save.
+  const handleSave = async () => {
+    setIsSaving(true);
+    await persistSection("Saving", "Measurements saved!");
+    setIsSaving(false);
+  };
+
   const handleUpdate = async () => {
     setIsUpdating(true);
-    showToast("Updating measurements…", "loading");
-    const snapshot = gender === "male"
-      ? { gender, tab: maleTab, data: maleData[maleTab] }
-      : { gender, tab: femaleTab, data: femaleData[femaleTab] };
-    console.log("Updated:", JSON.stringify(snapshot, null, 2));
-    await new Promise((r) => setTimeout(r, 800));
+    await persistSection("Updating", "Measurements updated!");
     setIsUpdating(false);
-    showToast("Measurements updated!", "success");
-    setTimeout(hideToast, 3000);
   };
 
   const tabs       = gender === "male" ? MALE_TABS : FEMALE_TABS;

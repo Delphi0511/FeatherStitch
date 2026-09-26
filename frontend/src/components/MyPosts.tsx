@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getTailorPosts, deletePost, ApiError, formatPrice } from "../api/posts.tsx";
+import { getTailorPosts, deletePost, ApiError, formatPrice, thumbUrl } from "../api/posts.tsx";
 import type { PostData } from "./AddEditPost";
 
 type Filter = "all" | "published" | "draft";
@@ -171,7 +171,7 @@ const MyPosts = () => {
                 {/* Cover */}
                 <div className="relative h-48 bg-slate-900">
                   {post.images[0] ? (
-                    <img src={post.images[0].url} alt={post.title} className="w-full h-full object-cover" />
+                    <img src={thumbUrl(post.images[0].url)} alt={post.title} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-4xl opacity-40">🧵</div>
                   )}

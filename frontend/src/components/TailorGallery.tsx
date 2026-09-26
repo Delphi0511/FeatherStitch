@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getTailorPosts, ApiError, formatPrice } from "../api/posts.tsx";
+import { getTailorPosts, ApiError, formatPrice, thumbUrl } from "../api/posts.tsx";
 import type { PostData } from "./AddEditPost";
+import PostDetailModal from "./PostDetailModal";
 
 // Shows every post of the signed-in tailor as a browsable portfolio, with a detail view per post.
 const TailorGallery = () => {
@@ -13,7 +14,6 @@ const TailorGallery = () => {
   const [needsProfile, setNeedsProfile] = useState(false);
   const [category, setCategory] = useState("All");
   const [openPost, setOpenPost] = useState<PostData | null>(null);
-  const [imageIndex, setImageIndex] = useState(0);
 
   useEffect(() => {
     getTailorPosts()
@@ -25,18 +25,8 @@ const TailorGallery = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  // Lets Escape close the detail view.
-  useEffect(() => {
-    if (!openPost) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpenPost(null);
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [openPost]);
-
-  const openDetail = (post: PostData) => {
-    setOpenPost(post);
-    setImageIndex(0);
-  };
+  const openDetail = (post: PostData) => setOpenPost(post);
+  const closeDetail = useCallback(() => setOpenPost(null), []);
 
   const categories = ["All", ...Array.from(new Set(posts.map((p) => p.category).filter(Boolean)))];
   const visible = category === "All" ? posts : posts.filter((p) => p.category === category);
@@ -154,7 +144,7 @@ const TailorGallery = () => {
               >
                 {post.images[0] ? (
                   <img
-                    src={post.images[0].url}
+                    src={thumbUrl(post.images[0].url)}
                     alt={post.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
@@ -189,101 +179,20 @@ const TailorGallery = () => {
 
       {/* Detail view */}
       {openPost && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setOpenPost(null)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={openPost.title}
-            className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-[#0d1426] border border-slate-700 grid md:grid-cols-2"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Photos */}
-            <div className="bg-black flex flex-col">
-              <div className="relative aspect-[4/5]">
-                {openPost.images[imageIndex] ? (
-                  <img src={openPost.images[imageIndex].url} alt={openPost.title} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-6xl opacity-30">🧵</div>
-                )}
-              </div>
-              {openPost.images.length > 1 && (
-                <div className="flex gap-2 p-3 overflow-x-auto">
-                  {openPost.images.map((img, i) => (
-                    <button
-                      key={img.id}
-                      type="button"
-                      aria-label={`Photo ${i + 1}`}
-                      onClick={() => setImageIndex(i)}
-                      className={`w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden border-2 ${
-                        i === imageIndex ? "border-emerald-400" : "border-transparent opacity-60 hover:opacity-100"
-                      }`}
-                    >
-                      <img src={img.url} alt="" className="w-full h-full object-cover" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Details */}
-            <div className="p-6 flex flex-col">
-              <div className="flex items-start justify-between gap-3 mb-4">
-                <div>
-                  <p className="text-emerald-400 text-xs font-bold uppercase tracking-widest mb-1">{openPost.category}</p>
-                  <h2 className="text-white text-2xl font-extrabold leading-tight">{openPost.title || "Untitled post"}</h2>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Close"
-                  onClick={() => setOpenPost(null)}
-                  className="text-slate-400 hover:text-white text-xl leading-none"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <p className="text-emerald-300 text-2xl font-extrabold mb-4">{formatPrice(openPost.price)}</p>
-
-              <div className="flex flex-wrap gap-2 mb-5 text-xs">
-                {openPost.turnaround && (
-                  <span className="px-3 py-1 rounded-full bg-slate-800 text-slate-300">⏱ {openPost.turnaround}</span>
-                )}
-                <span
-                  className={`px-3 py-1 rounded-full ${
-                    openPost.status === "published" ? "bg-emerald-500/15 text-emerald-300" : "bg-slate-800 text-slate-300"
-                  }`}
-                >
-                  {openPost.status === "published" ? "Published" : "Draft"}
-                </span>
-              </div>
-
-              {openPost.description && (
-                <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-line mb-5">{openPost.description}</p>
-              )}
-
-              {openPost.tags && (
-                <div className="flex flex-wrap gap-1.5 mb-6">
-                  {openPost.tags.split(",").map((t) => t.trim()).filter(Boolean).map((tag) => (
-                    <span key={tag} className="px-2 py-0.5 rounded-md bg-slate-700/60 text-slate-300 text-[11px]">
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={() => navigate(`/posts/${openPost.id}/edit`)}
-                className="mt-auto w-full py-2.5 rounded-xl border border-slate-600 text-slate-200 text-sm font-semibold hover:border-emerald-500 hover:text-emerald-300 transition-colors"
-              >
-                Edit post
-              </button>
-            </div>
-          </div>
-        </div>
+        <PostDetailModal
+          post={openPost}
+          onClose={closeDetail}
+          showStatus
+          footer={
+            <button
+              type="button"
+              onClick={() => navigate(`/posts/${openPost.id}/edit`)}
+              className="w-full py-2.5 rounded-xl border border-slate-600 text-slate-200 text-sm font-semibold hover:border-emerald-500 hover:text-emerald-300 transition-colors"
+            >
+              Edit post
+            </button>
+          }
+        />
       )}
     </div>
   );
