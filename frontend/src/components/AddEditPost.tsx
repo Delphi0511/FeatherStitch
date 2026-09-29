@@ -26,7 +26,7 @@ interface AddEditPostCardProps {
   /** Pass an existing post to render edit mode; omit for add mode */
   post?: PostData;
   /** Called after a successful create/update, with the saved post from the server */
-  onSaved?: (savedPost: any) => void;
+  onSaved?: (savedPost: PostData) => void;
   /** Called after a successful delete */
   onDeleted?: (id: string) => void;
   onCancel?: () => void;
@@ -98,8 +98,8 @@ export default function AddEditPostCard({ post, onSaved, onDeleted, onCancel }: 
         : await createPost(payload, status);
 
       onSaved?.(savedPost);
-    } catch (err: any) {
-      setError(err.message || "Something went wrong while saving.");
+    } catch (err) {
+      setError((err instanceof Error && err.message) || "Something went wrong while saving.");
     } finally {
       setSaving(false);
     }
@@ -118,8 +118,8 @@ export default function AddEditPostCard({ post, onSaved, onDeleted, onCancel }: 
     try {
       await deletePost(post.id);
       onDeleted?.(post.id);
-    } catch (err: any) {
-      setError(err.message || "Something went wrong while deleting.");
+    } catch (err) {
+      setError((err instanceof Error && err.message) || "Something went wrong while deleting.");
     } finally {
       setDeleting(false);
       setConfirmingDelete(false);

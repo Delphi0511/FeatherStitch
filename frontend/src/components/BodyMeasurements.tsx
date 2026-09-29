@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { API_URL } from "../config";
 // ── Types ──────────────────────────────────────────────────────────────────
 type Gender = "male" | "female";
 type MaleTabId = "upper" | "lower";
@@ -238,7 +239,7 @@ export default function BodyMeasurements() {
         if (!user.userId) return;
 
         const response = await axios.get<StoredMeasurement[]>(
-          `http://localhost:5000/api/measurements/${user.userId}`,
+          `${API_URL}/api/measurements/${user.userId}`,
           { headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` } }
         );
 
@@ -294,7 +295,7 @@ export default function BodyMeasurements() {
     showToast(`${verb} measurements…`, "loading");
     try {
       await axios.post(
-        "http://localhost:5000/api/measurements/save",
+        `${API_URL}/api/measurements/save`,
         {
           gender,
           type: gender === "male" ? maleTab : femaleTab,

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { API_URL } from "../config";
 
 // Authenticates a user, stores the verified session data, and opens the role-specific dashboard.
 const Login: React.FC = () => {
@@ -30,7 +31,7 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:5000/user/login", {
+      const response = await fetch(`${API_URL}/user/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -58,8 +59,9 @@ const Login: React.FC = () => {
         setError("Unknown user type");
       }
 
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      // A network failure (backend down) also lands here, so always show something.
+      setError((err instanceof Error && err.message) || "Could not log in. Please try again.");
     } finally {
       setLoading(false);
     }

@@ -1,7 +1,8 @@
 import type { PostData } from "../components/AddEditPost";
 import { ApiError, normalizePost } from "./posts.tsx";
+import { API_URL } from "../config";
 
-const API_BASE = "http://localhost:5000/api/public";
+const API_BASE = `${API_URL}/api/public`;
 
 // A tailor as customers see them: only the fields the server publishes.
 export interface PublicTailor {

@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
 import AuthCard, { authButtonClass, authInputClass } from "./AuthCard";
+import { API_URL } from "../config";
 
 // Asks for an email and requests a reset link; the server's reply never reveals whether the account exists.
 const ForgotPassword = () => {
@@ -15,7 +16,7 @@ const ForgotPassword = () => {
     setSending(true);
     setError("");
     try {
-      const res = await fetch("http://localhost:5000/user/forgot-password", {
+      const res = await fetch(`${API_URL}/user/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),

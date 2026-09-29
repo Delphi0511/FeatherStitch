@@ -1,6 +1,7 @@
 import type { PostData, PostImage } from "../components/AddEditPost";
+import { API_URL } from "../config";
 
-const API_BASE = "http://localhost:5000/api/posts";
+const API_BASE = `${API_URL}/api/posts`;
 
 export type PostStatus = "draft" | "published";
 
@@ -85,17 +86,37 @@ async function handleResponse<T>(res: Response): Promise<ApiResponse<T>> {
   return data;
 }
 
+// Returns the post from a single-post response, failing loudly if the server sent none.
+function requirePost(data: ApiResponse<RawPost>): RawPost {
+  if (!data.post) throw new Error("The server did not return the post");
+  return data.post;
+}
+
+// A post as the server sends it (a Mongoose document).
+export interface RawPost {
+  _id?: string;
+  id?: string;
+  title?: string;
+  category?: string;
+  turnaround?: string;
+  description?: string;
+  price?: number;
+  tags?: string[] | string;
+  images?: string[];
+  status?: string;
+}
+
 // The server returns raw Mongoose docs (_id, tags: string[], images: string[]).
 // Normalize that into the shape the form actually works with.
 // Adapts MongoDB post fields to the form's client-side data shape.
-export function normalizePost(raw: any): PostData {
+export function normalizePost(raw: RawPost): PostData {
   const images: PostImage[] = (raw.images ?? []).map((url: string) => ({
     id: url,
     url,
   }));
 
   return {
-    id: raw._id ?? raw.id,
+    id: raw._id ?? raw.id ?? "",
     title: raw.title ?? "",
     category: raw.category ?? "",
     turnaround: raw.turnaround ?? "",
@@ -120,8 +141,8 @@ export async function createPost(
     body: formData,
   });
 
-  const data = await handleResponse<any>(res);
-  return normalizePost(data.post);
+  const data = await handleResponse<RawPost>(res);
+  return normalizePost(requirePost(data));
 }
 
 // Saves edits to an existing post while preserving the selected status and images.
@@ -138,8 +159,8 @@ export async function updatePost(
     body: formData,
   });
 
-  const data = await handleResponse<any>(res);
-  return normalizePost(data.post);
+  const data = await handleResponse<RawPost>(res);
+  return normalizePost(requirePost(data));
 }
 
 // Removes a post through the authenticated API so its server-side images are also cleaned up.
@@ -159,7 +180,7 @@ export async function getTailorPosts(): Promise<PostData[]> {
     headers: authHeaders(),
   });
 
-  const data = await handleResponse<any>(res);
+  const data = await handleResponse<RawPost>(res);
   return (data.posts ?? []).map(normalizePost);
 }
 
@@ -170,6 +191,6 @@ export async function getPostById(id: string): Promise<PostData> {
     headers: authHeaders(),
   });
 
-  const data = await handleResponse<any>(res);
-  return normalizePost(data.post);
+  const data = await handleResponse<RawPost>(res);
+  return normalizePost(requirePost(data));
 }

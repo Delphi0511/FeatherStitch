@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_URL } from "../config";
 
-const API_BASE = "http://localhost:5000/api/tailor";
+const API_BASE = `${API_URL}/api/tailor`;
 // Adds the JWT needed for tailor-only profile API requests.
 const authHeaders = (json = false): HeadersInit => ({
   Authorization: `Bearer ${localStorage.getItem("token") || ""}`,

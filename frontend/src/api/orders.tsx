@@ -1,6 +1,7 @@
 import { ApiError } from "./posts.tsx";
+import { API_URL } from "../config";
 
-const API_BASE = "http://localhost:5000/api/orders";
+const API_BASE = `${API_URL}/api/orders`;
 
 export type OrderStatus = "Pending" | "Accepted" | "In progress" | "Ready" | "Delivered" | "Declined" | "Cancelled";
 
@@ -96,7 +97,7 @@ export async function listMyMeasurements(): Promise<SavedMeasurement[]> {
     // Unreadable session: fall through with no id.
   }
   if (!userId) return [];
-  const res = await fetch(`http://localhost:5000/api/measurements/${encodeURIComponent(userId)}`, {
+  const res = await fetch(`${API_URL}/api/measurements/${encodeURIComponent(userId)}`, {
     headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
   });
   const data = await res.json();

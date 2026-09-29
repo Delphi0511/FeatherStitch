@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
+import { API_URL } from "../config";
 
 // Collects a new account's credentials and role before directing the user to sign in.
 const Signup: React.FC = () => {
@@ -42,7 +43,7 @@ const Signup: React.FC = () => {
     }
 
     try {
-      const response = await fetch("http://localhost:5000/user/signup", {
+      const response = await fetch(`${API_URL}/user/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),

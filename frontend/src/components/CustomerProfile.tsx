@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import type { ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_URL } from "../config";
 
-const API_BASE = "http://localhost:5000/api/customer";
+const API_BASE = `${API_URL}/api/customer`;
 
 interface FormState {
   email: string;
