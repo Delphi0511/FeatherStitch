@@ -142,7 +142,9 @@ export const forgotPassword = async (req, res) => {
       }
     );
 
-    const link = `${process.env.CLIENT_ORIGIN || "http://localhost:5173"}/reset-password?token=${token}`;
+    // CLIENT_ORIGIN may list several sites; the first one is the public website used in emails.
+    const siteUrl = (process.env.CLIENT_ORIGIN || "http://localhost:5173").split(",")[0].trim().replace(/\/+$/, "");
+    const link = `${siteUrl}/reset-password?token=${token}`;
     try {
       await sendMail({
         to: user.email,

@@ -16,8 +16,15 @@ dotenv.config();
 
 const app = express();
 
+// Websites allowed to call this API. CLIENT_ORIGIN may list several, comma-separated,
+// e.g. "https://featherstitch.vercel.app,http://localhost:5173".
+const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173")
+  .split(",")
+  .map((o) => o.trim().replace(/\/+$/, ""))
+  .filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
+  origin: allowedOrigins,
   credentials: true,
 }));
 
