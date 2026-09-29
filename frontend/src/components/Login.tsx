@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 // Authenticates a user, stores the verified session data, and opens the role-specific dashboard.
 const Login: React.FC = () => {
@@ -137,9 +137,9 @@ const Login: React.FC = () => {
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">
                   Password
                 </label>
-                <a href="#" className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors font-medium">
+                <Link to="/forgot-password" className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors font-medium">
                   Forgot Password?
-                </a>
+                </Link>
               </div>
               <div className="relative">
                 <input

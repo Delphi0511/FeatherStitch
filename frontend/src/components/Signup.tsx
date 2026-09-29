@@ -1,12 +1,15 @@
 import React, { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 
 // Collects a new account's credentials and role before directing the user to sign in.
 const Signup: React.FC = () => {
+  // "Join as a tailor" on the landing page links here with ?role=Tailor to preselect the role.
+  const [params] = useSearchParams();
+  const presetRole = params.get("role");
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    usertype: "",
+    usertype: presetRole === "Tailor" || presetRole === "Customer" ? presetRole : "",
   });
 
   const [message, setMessage] = useState("");
@@ -45,9 +48,15 @@ const Signup: React.FC = () => {
         body: JSON.stringify(formData),
       });
 
-      if (response.ok) setRedirect(true);
-    } catch (error) {
-      alert(error);
+      if (response.ok) {
+        setRedirect(true);
+        return;
+      }
+      // Show the server's reason, e.g. "Email already registered".
+      const data = await response.json().catch(() => ({}));
+      setIsError(true);
+      setMessage(data.message || "Could not create your account. Please try again.");
+    } catch {
       setIsError(true);
       setMessage("Server error. Please try again.");
     }

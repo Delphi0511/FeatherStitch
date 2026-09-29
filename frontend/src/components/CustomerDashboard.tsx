@@ -1,17 +1,48 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { listMyOrders, listMyMeasurements, ACTIVE_STATUSES, CLOSED_STATUSES, MEASUREMENT_LABELS } from "../api/orders.tsx";
+import { listTailors } from "../api/public.tsx";
+import { getSession } from "../auth";
+import LogoutButton from "./LogoutButton";
 
-// Shows the customer's primary navigation and redirects unauthenticated visits to login.
+// Shows the customer's primary navigation (sign-in is enforced by ProtectedRoute).
 const CustomerDashboard = () => {
   const navigate = useNavigate();
+  const email = getSession()?.email || "";
+
+  // Real numbers for the stats row; each is loaded independently so one failure doesn't hide the rest.
+  const [counts, setCounts] = useState<{
+    active?: number | null;
+    tailors?: number | null;
+    measurements?: number | null;
+    designs?: number | null;
+  }>({});
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    listMyOrders()
+      .then((orders) =>
+        setCounts((c) => ({
+          ...c,
+          active: orders.filter((o) => ACTIVE_STATUSES.includes(o.status)).length,
+          designs: orders.filter((o) => !CLOSED_STATUSES.includes(o.status)).length,
+        }))
+      )
+      .catch(() => setCounts((c) => ({ ...c, active: null, designs: null })));
 
-    if (!token) {
-      navigate("/login");
-    }
-  }, [navigate]);
+    listTailors()
+      .then((tailors) => setCounts((c) => ({ ...c, tailors: tailors.length })))
+      .catch(() => setCounts((c) => ({ ...c, tailors: null })));
+
+    // Count only sections that actually contain a measurement.
+    listMyMeasurements()
+      .then((sections) =>
+        setCounts((c) => ({
+          ...c,
+          measurements: sections.filter((s) => Object.keys(MEASUREMENT_LABELS).some((k) => s[k] != null && s[k] !== "")).length,
+        }))
+      )
+      .catch(() => setCounts((c) => ({ ...c, measurements: null })));
+  }, []);
 
   const cards = [
     {
@@ -64,24 +95,20 @@ const CustomerDashboard = () => {
       route: "/gallery",
       img: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&q=80",
     },
-    {
-      title: "Logout",
-      description: "Sign out safely from your account",
-      icon: "🚪",
-      gradient: "from-red-700 to-red-900",
-      glow: "shadow-red-900/50",
-      ring: "ring-red-500/30",
-      route: "/logout",
-      img: null,
-      logout: true,
-    },
   ];
 
+  // "…" while loading, "—" if that request failed.
+  const show = (n: number | null | undefined) => (n === undefined ? "…" : n === null ? "—" : String(n));
   const stats = [
-    { label: "Active Orders", value: "3", icon: "📦", color: "text-cyan-400" },
-    { label: "Tailors Found", value: "12", icon: "🔍", color: "text-violet-400" },
-    { label: "Measurements", value: "Saved", icon: "📏", color: "text-pink-400" },
-    { label: "Gallery Views", value: "58", icon: "🖼️", color: "text-amber-400" },
+    { label: "Active Orders", value: show(counts.active), icon: "📦", color: "text-cyan-400" },
+    { label: "Tailors Available", value: show(counts.tailors), icon: "🔍", color: "text-violet-400" },
+    {
+      label: "Measurements",
+      value: counts.measurements === 0 ? "None yet" : counts.measurements ? `${counts.measurements} saved` : show(counts.measurements),
+      icon: "📏",
+      color: "text-pink-400",
+    },
+    { label: "Ordered Designs", value: show(counts.designs), icon: "🖼️", color: "text-amber-400" },
   ];
 
   return (
@@ -97,11 +124,14 @@ const CustomerDashboard = () => {
           </div>
           <span className="text-white font-bold text-lg tracking-tight">FeatherStitch</span>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-sky-600 flex items-center justify-center text-white text-xs font-bold shadow-md">
-            C
+        <div className="flex items-center gap-4">
+          <div className="hidden sm:flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-sky-600 flex items-center justify-center text-white text-xs font-bold shadow-md">
+              {(email || "C").charAt(0).toUpperCase()}
+            </div>
+            <span className="text-slate-400 text-sm">{email}</span>
           </div>
-          <span className="text-slate-400 text-sm">Welcome back!</span>
+          <LogoutButton />
         </div>
       </nav>
 
@@ -127,37 +157,23 @@ const CustomerDashboard = () => {
           {cards.map((card) => (
             <button
               key={card.title}
-              onClick={() => {
-                if (card.logout) {
-                  localStorage.removeItem("token");
-                  localStorage.removeItem("user");
-                  navigate("/login");
-                  return;
-                }
-                navigate(card.route);
-              }}
+              onClick={() => navigate(card.route)}
               className={`group relative rounded-2xl overflow-hidden border border-slate-700/60 bg-slate-800/40 hover:border-slate-600 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl ${card.glow} ring-1 ${card.ring} text-left`}
             >
-              {/* Image or Gradient */}
-              {card.img ? (
-                <div className="relative h-44 overflow-hidden">
-                  <img
-                    src={card.img}
-                    alt={card.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-60"
-                  />
-                  <div className={`absolute inset-0 bg-gradient-to-t ${card.gradient} opacity-60`} />
-                  <div className="absolute top-4 left-4">
-                    <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${card.gradient} flex items-center justify-center text-xl shadow-lg`}>
-                      {card.icon}
-                    </div>
+              {/* Image */}
+              <div className="relative h-44 overflow-hidden">
+                <img
+                  src={card.img}
+                  alt={card.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-60"
+                />
+                <div className={`absolute inset-0 bg-gradient-to-t ${card.gradient} opacity-60`} />
+                <div className="absolute top-4 left-4">
+                  <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${card.gradient} flex items-center justify-center text-xl shadow-lg`}>
+                    {card.icon}
                   </div>
                 </div>
-              ) : (
-                <div className={`h-44 bg-gradient-to-br ${card.gradient} flex items-center justify-center`}>
-                  <div className="text-5xl opacity-80">{card.icon}</div>
-                </div>
-              )}
+              </div>
 
               {/* Card Body */}
               <div className="p-5">
@@ -166,7 +182,7 @@ const CustomerDashboard = () => {
                 </h3>
                 <p className="text-slate-400 text-xs leading-relaxed">{card.description}</p>
                 <div className="mt-4 text-xs font-semibold text-slate-500 group-hover:text-cyan-400 transition-colors duration-200">
-                  {card.logout ? <span className="text-red-400">Sign out →</span> : <span>Open →</span>}
+                  <span>Open →</span>
                 </div>
               </div>
 

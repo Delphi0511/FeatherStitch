@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getTailorPosts } from "../api/posts.tsx";
+import { listIncomingOrders } from "../api/orders.tsx";
+import { getSession } from "../auth";
+import LogoutButton from "./LogoutButton";
 
 // Shows the tailor's primary navigation and clears session data when logging out.
 const TailorDashboard = () => {
   const navigate = useNavigate();
+  const email = getSession()?.email || "";
   const [postStats, setPostStats] = useState<{ posts: number; photos: number } | null>(null);
 
   // Counts the tailor's posts and their photos; a tailor without a profile simply has none yet.
@@ -14,6 +18,20 @@ const TailorDashboard = () => {
         setPostStats({ posts: posts.length, photos: posts.reduce((sum, p) => sum + p.images.length, 0) })
       )
       .catch(() => setPostStats({ posts: 0, photos: 0 }));
+  }, []);
+
+  // Order numbers: total, distinct customers and new (pending) requests; a tailor without a profile has none.
+  const [orderStats, setOrderStats] = useState<{ total: number; customers: number; pending: number } | null>(null);
+  useEffect(() => {
+    listIncomingOrders()
+      .then((orders) =>
+        setOrderStats({
+          total: orders.length,
+          customers: new Set(orders.map((o) => o.customerUserId)).size,
+          pending: orders.filter((o) => o.status === "Pending").length,
+        })
+      )
+      .catch(() => setOrderStats({ total: 0, customers: 0, pending: 0 }));
   }, []);
 
   const cards = [
@@ -54,7 +72,7 @@ const TailorDashboard = () => {
       gradient: "from-amber-600 to-orange-700",
       glow: "shadow-amber-900/50",
       ring: "ring-amber-500/30",
-      route: "/customers",
+      route: "/tailorcustomers",
       img: "https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=400&q=80",
     },
     {
@@ -64,19 +82,8 @@ const TailorDashboard = () => {
       gradient: "from-pink-600 to-rose-700",
       glow: "shadow-pink-900/50",
       ring: "ring-pink-500/30",
-      route: "/orders",
+      route: "/tailororders",
       img: "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=400&q=80",
-    },
-    {
-      title: "Logout",
-      description: "Sign out of your tailor account",
-      icon: "🚪",
-      gradient: "from-red-700 to-red-900",
-      glow: "shadow-red-900/50",
-      ring: "ring-red-500/30",
-      route: "/logout",
-      img: null,
-      logout: true,
     },
   ];
 
@@ -93,11 +100,14 @@ const TailorDashboard = () => {
           </div>
           <span className="text-white font-bold text-lg tracking-tight">FeatherStitch</span>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-sky-600 flex items-center justify-center text-white text-xs font-bold shadow-md">
-            T
+        <div className="flex items-center gap-4">
+          <div className="hidden sm:flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-sky-600 flex items-center justify-center text-white text-xs font-bold shadow-md">
+              {(email || "T").charAt(0).toUpperCase()}
+            </div>
+            <span className="text-slate-400 text-sm">{email}</span>
           </div>
-          <span className="text-slate-400 text-sm">Welcome back!</span>
+          <LogoutButton />
         </div>
       </nav>
 
@@ -124,39 +134,31 @@ const TailorDashboard = () => {
           {cards.map((card) => (
             <button
               key={card.title}
-              onClick={() => {
-                if (card.logout) {
-                  localStorage.removeItem("token");
-                  localStorage.removeItem("user");
-                  navigate("/login");
-                  return;
-                }
-                navigate(card.route);
-              }}
+              onClick={() => navigate(card.route)}
               className={`group relative rounded-2xl overflow-hidden border border-slate-700/60 bg-slate-800/40 hover:border-slate-600 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl ${card.glow} ring-1 ${card.ring} text-left`}
             >
               {/* Card Image */}
-              {card.img ? (
-                <div className="relative h-44 overflow-hidden">
-                  <img
-                    src={card.img}
-                    alt={card.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-60"
-                  />
-                  {/* Gradient overlay */}
-                  <div className={`absolute inset-0 bg-gradient-to-t ${card.gradient} opacity-60`} />
-                  {/* Icon on image */}
-                  <div className="absolute top-4 left-4">
-                    <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${card.gradient} flex items-center justify-center text-xl shadow-lg`}>
-                      {card.icon}
-                    </div>
+              <div className="relative h-44 overflow-hidden">
+                <img
+                  src={card.img}
+                  alt={card.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-60"
+                />
+                {/* Gradient overlay */}
+                <div className={`absolute inset-0 bg-gradient-to-t ${card.gradient} opacity-60`} />
+                {/* Icon on image */}
+                <div className="absolute top-4 left-4">
+                  <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${card.gradient} flex items-center justify-center text-xl shadow-lg`}>
+                    {card.icon}
                   </div>
                 </div>
-              ) : (
-                /* Logout - no image, full gradient */
-                <div className={`h-44 bg-gradient-to-br ${card.gradient} flex items-center justify-center`}>
-                  <div className="text-5xl opacity-80">{card.icon}</div>
-                </div>
+              </div>
+
+              {/* New-request count on the Orders card */}
+              {card.route === "/tailororders" && orderStats && orderStats.pending > 0 && (
+                <span className="absolute top-4 right-4 z-10 px-2.5 py-1 rounded-full bg-amber-500 text-slate-900 text-[11px] font-extrabold shadow-lg">
+                  {orderStats.pending} new
+                </span>
               )}
 
               {/* Card Body */}
@@ -168,11 +170,7 @@ const TailorDashboard = () => {
 
                 {/* Arrow */}
                 <div className="mt-4 flex items-center gap-1 text-xs font-semibold text-slate-500 group-hover:text-cyan-400 transition-colors duration-200">
-                  {card.logout ? (
-                    <span className="text-red-400">Sign out →</span>
-                  ) : (
-                    <span>Open →</span>
-                  )}
+                  <span>Open →</span>
                 </div>
               </div>
 
@@ -185,9 +183,8 @@ const TailorDashboard = () => {
         {/* Stats Row */}
         <div className="grid grid-cols-4 gap-4 mt-8">
           {[
-            // Orders and customers don't exist in the backend yet.
-            { label: "Total Orders", value: "—", icon: "📦", color: "text-cyan-400" },
-            { label: "Customers", value: "—", icon: "👥", color: "text-violet-400" },
+            { label: "Total Orders", value: orderStats ? String(orderStats.total) : "…", icon: "📦", color: "text-cyan-400" },
+            { label: "Customers", value: orderStats ? String(orderStats.customers) : "…", icon: "👥", color: "text-violet-400" },
             { label: "Posts", value: postStats ? String(postStats.posts) : "…", icon: "✏️", color: "text-emerald-400" },
             { label: "Gallery Photos", value: postStats ? String(postStats.photos) : "…", icon: "🖼️", color: "text-amber-400" },
           ].map((stat) => (

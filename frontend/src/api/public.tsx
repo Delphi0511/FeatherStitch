@@ -43,6 +43,12 @@ export async function listTailors(params: { city?: string; q?: string } = {}): P
   return data.tailors;
 }
 
+// Loads one published design with the public profile of the tailor who posted it.
+export async function getPublishedPost(id: string): Promise<{ post: PostData; tailor: PublicTailor }> {
+  const data = await getJson(`/posts/${encodeURIComponent(id)}`);
+  return { post: normalizePost(data.post), tailor: data.post.tailor };
+}
+
 // Loads one tailor's public profile together with their published posts.
 export async function getTailorProfile(id: string): Promise<{ tailor: PublicTailor; posts: PostData[] }> {
   const data = await getJson(`/tailors/${encodeURIComponent(id)}`);

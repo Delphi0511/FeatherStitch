@@ -9,6 +9,7 @@ import measurementRoutes from "./routes/measurements.js";
 import tailorRoutes from "./routes/tailor.js";
 import postRoutes from "./routes/TailorPost.js";
 import publicRoutes from "./routes/public.js";
+import orderRoutes from "./routes/orders.js";
 
 dotenv.config();
 
@@ -32,6 +33,7 @@ app.use("/api/measurements", measurementRoutes);
 app.use("/api/tailor", tailorRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/public", publicRoutes);
+app.use("/api/orders", orderRoutes);
 
 const mongoUri = process.env.MONGODB_URI || "mongodb://localhost:27017/Tailordb";
 

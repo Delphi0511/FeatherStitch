@@ -1,20 +1,14 @@
 import { useNavigate } from "react-router-dom";
+import { dashboardFor, getSession } from "../auth";
 
 // Shown for any URL without a page (including features not built yet) instead of a blank screen.
 const NotFound = () => {
   const navigate = useNavigate();
 
-  // Sends the user back to their own dashboard, or to login if nobody is signed in.
+  // Sends the user back to their own dashboard, or to the home page if nobody is signed in.
   const goHome = () => {
-    let usertype = "";
-    try {
-      usertype = JSON.parse(localStorage.getItem("user") || "{}").usertype || "";
-    } catch {
-      // Unreadable session data: fall through to login.
-    }
-    if (usertype === "Tailor") navigate("/tailordashboard");
-    else if (usertype === "Customer") navigate("/customerdashboard");
-    else navigate("/login");
+    const session = getSession();
+    navigate(session ? dashboardFor(session.usertype) : "/");
   };
 
   return (
@@ -32,7 +26,7 @@ const NotFound = () => {
         onClick={goHome}
         className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-500 hover:to-sky-500 text-white text-sm font-bold"
       >
-        ← Back to dashboard
+        ← Take me back
       </button>
     </div>
   );

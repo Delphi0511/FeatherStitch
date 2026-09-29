@@ -11,5 +11,4 @@ const storage = new CloudinaryStorage({
 });
 
 const upload = multer({ storage });
-console.log("CLOUDINARY CONFIG:", cloudinary.config());
 export default upload;

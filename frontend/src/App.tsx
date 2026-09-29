@@ -7,7 +7,10 @@ import CustomerDashboard from "./components/CustomerDashboard";
 import CustomerProfile from './components/CustomerProfile';
 import TailorProfile from './components/TailorProfile';
 import BodyMeasurements from './components/BodyMeasurements';
-import ProtectedRoute from "./components/ProtectedRoute";
+import ProtectedRoute, { GuestOnlyRoute } from "./components/ProtectedRoute";
+import Landing from './components/Landing';
+import ForgotPassword from './components/ForgotPassword';
+import ResetPassword from './components/ResetPassword';
 import MyPosts from './components/MyPosts';
 import PostEditorPage from './components/PostEditorPage';
 import TailorGallery from './components/TailorGallery';
@@ -15,15 +18,22 @@ import FindTailor from './components/FindTailor';
 import TailorPublicPage from './components/TailorPublicPage';
 import CustomerGallery from './components/CustomerGallery';
 import NotFound from './components/NotFound';
+import OrderDesignPage from './components/OrderDesignPage';
+import CustomerOrders from './components/CustomerOrders';
+import TailorOrders from './components/TailorOrders';
+import TailorCustomers from './components/TailorCustomers';
 
 // Defines the application's public and role-protected client-side routes.
 function App() {
   return (
     <BrowserRouter>
   <Routes>
-    <Route path="/" element={<h1 className="text-3xl font-bold text-blue-600">Tailwind is working!</h1>} />
-    <Route path="/login" element={<Login />} />
-    <Route path="/signup" element={<Signup />} />
+    <Route path="/" element={<Landing />} />
+    <Route path="/login" element={<GuestOnlyRoute><Login /></GuestOnlyRoute>} />
+    <Route path="/signup" element={<GuestOnlyRoute><Signup /></GuestOnlyRoute>} />
+    <Route path="/forgot-password" element={<GuestOnlyRoute><ForgotPassword /></GuestOnlyRoute>} />
+    {/* Not guest-only: a reset link must work even if another account is signed in on this browser. */}
+    <Route path="/reset-password" element={<ResetPassword />} />
 
     {/* Tailor Routes */}
     <Route
@@ -130,6 +140,42 @@ function App() {
       element={
         <ProtectedRoute allowedRole="Customer">
           <CustomerGallery />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
+      path="/order/:postId"
+      element={
+        <ProtectedRoute allowedRole="Customer">
+          <OrderDesignPage />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
+      path="/orders"
+      element={
+        <ProtectedRoute allowedRole="Customer">
+          <CustomerOrders />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
+      path="/tailororders"
+      element={
+        <ProtectedRoute allowedRole="Tailor">
+          <TailorOrders />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
+      path="/tailorcustomers"
+      element={
+        <ProtectedRoute allowedRole="Tailor">
+          <TailorCustomers />
         </ProtectedRoute>
       }
     />

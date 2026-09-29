@@ -28,6 +28,12 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+
+  // Password reset: only a SHA-256 hash of the emailed token is stored, so a leaked database
+  // can't be used to reset passwords. All three are cleared once the reset succeeds.
+  resetPasswordTokenHash: { type: String, index: true },
+  resetPasswordExpires: { type: Date },
+  resetPasswordRequestedAt: { type: Date },
 });
 
 const User = mongoose.model("User", userSchema);

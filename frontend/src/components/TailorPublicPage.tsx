@@ -183,7 +183,21 @@ const TailorPublicPage = () => {
         )}
       </div>
 
-      {openPost && <PostDetailModal post={openPost} onClose={closeDetail} />}
+      {openPost && (
+        <PostDetailModal
+          post={openPost}
+          onClose={closeDetail}
+          footer={
+            <button
+              type="button"
+              onClick={() => navigate(`/order/${openPost.id}`)}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 to-purple-500 hover:from-violet-500 hover:to-purple-400 text-white text-sm font-bold shadow-lg shadow-violet-900/40 transition-all"
+            >
+              Order this design →
+            </button>
+          }
+        />
+      )}
     </div>
   );
 };
